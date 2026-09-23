@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import pkg from './package.json' with { type: 'json' }
 
@@ -33,10 +33,18 @@ function serviceWorker(): Plugin {
   }
 }
 
-export default defineConfig({
-  plugins: [react(), serviceWorker()],
-  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
-  server: { host: true },
-  // The Firebase chunk is ~600 kB but only loads when sign-in is configured.
-  build: { chunkSizeWarningLimit: 700 },
+export default defineConfig(({ mode }) => {
+  const { VITE_FIREBASE_PROJECT_ID: projectId } = loadEnv(mode, process.cwd())
+  // Same as the /__/ rewrites in vercel.json, so Google sign-in works on localhost too.
+  const firebaseHost = { target: `https://${projectId}.firebaseapp.com`, changeOrigin: true }
+  return {
+    plugins: [react(), serviceWorker()],
+    define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+    server: {
+      host: true,
+      proxy: projectId ? { '/__/auth': firebaseHost, '/__/firebase': firebaseHost } : undefined,
+    },
+    // The Firebase chunk is ~600 kB but only loads when sign-in is configured.
+    build: { chunkSizeWarningLimit: 700 },
+  }
 })

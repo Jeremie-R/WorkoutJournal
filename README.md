@@ -40,17 +40,15 @@ Data model (`src/lib/types.ts`): weights are always stored in kg and converted f
 4. **Project settings → Your apps → Web app**: register the app and copy the config values into `.env.local` (see `.env.example`), and into the Vercel project's environment variables:
    ```
    VITE_FIREBASE_API_KEY=…
-   VITE_FIREBASE_AUTH_DOMAIN=…
    VITE_FIREBASE_PROJECT_ID=…
    VITE_FIREBASE_APP_ID=…
    ```
-5. **Authentication → Settings → Authorized domains**: add the production domain (e.g. `workout-journal.vercel.app`).
+5. **Authentication → Settings → Authorized domains**: add the production domain.
+6. **Google Cloud Console → APIs & Services → Credentials → Web client (auto created by Google Service)**: add `https://<domain>/__/auth/handler` (and `http://localhost:5173/__/auth/handler` for dev) to the authorized redirect URIs.
 
-Sign-in uses a popup and falls back to a redirect where popups are blocked (installed app, some mobile browsers). For the redirect to work reliably in Chrome/Safari, serve Firebase's auth handler from our own domain:
-- set `VITE_FIREBASE_AUTH_DOMAIN` to the app's domain (e.g. `workout-journal.vercel.app`),
-- add this rewrite at the top of `vercel.json` → `rewrites`:
-  `{ "source": "/__/auth/:path*", "destination": "https://<project-id>.firebaseapp.com/__/auth/:path*" }`,
-- add `https://<app-domain>/__/auth/handler` to the OAuth client's authorized redirect URIs in Google Cloud Console (APIs & Services → Credentials).
+Sign-in uses a popup and falls back to a full-page redirect where popups are blocked (installed app, some mobile browsers). To keep that redirect first-party (Chrome and Safari partition third-party storage, and the Android wrapper needs it), Firebase's sign-in handler is served from our own domain: `authDomain` is the current host, `vercel.json` rewrites `/__/auth/*` and `/__/firebase/*` to `<project-id>.firebaseapp.com`, and `vite.config.ts` proxies the same paths in dev.
+
+Current project: `workout-journal-dd95f` (Firestore in `europe-west1`), live at https://workout-journal-three.vercel.app.
 
 After someone signs in, workouts they logged before (in device-only mode) are offered for import with a banner on the Journal.
 

@@ -1,8 +1,16 @@
 node_modules
 dist
-.env
-.env.local
-.env.*.local
-.vercel
 .DS_Store
 *.log
+
+# Local secrets and deploy state. Only the empty template is tracked.
+.env*
+!.env.example
+.vercel
+.firebase
+
+# Android signing keys (for the TWA wrapper later) must never be committed.
+*.jks
+*.keystore
+*.p12
+key.properties

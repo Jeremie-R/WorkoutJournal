@@ -705,13 +705,25 @@
   font: 600 16px/1.3 var(--sans);
 }
 
+.account__body {
+  min-width: 0;
+}
+
 .account__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
   margin-top: 2px;
   color: var(--ink-2);
   font-size: 13px;
   line-height: 1.4;
+}
+
+.account__meta--line {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.account__meta--sync {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }

@@ -193,7 +193,7 @@ function ProfileSettings({ data }: { data: Data }) {
               Keep screen on
               <small>While a workout is in progress</small>
             </span>
-            <input type="checkbox" className="switch" checked={profile.keepAwake} onChange={(e) => set({ keepAwake: e.target.checked })} />
+            <input type="checkbox" className="switch" aria-label="Keep screen on" checked={profile.keepAwake} onChange={(e) => set({ keepAwake: e.target.checked })} />
           </label>
         </div>
       </section>
@@ -238,8 +238,9 @@ function AccountCard() {
         )}
         <div className="account__body">
           <p className="account__name">{user.name || 'Signed in'}</p>
-          <p className="account__meta">
-            <Icon name="cloud" size={14} /> {user.email} · synced
+          <p className="account__meta account__meta--line">{user.email}</p>
+          <p className="account__meta account__meta--sync">
+            <Icon name="cloud" size={14} /> Synced to your account
           </p>
         </div>
         <button className="btn btn--secondary btn--sm" onClick={signOut}>

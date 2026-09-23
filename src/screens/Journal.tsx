@@ -18,6 +18,8 @@ import { Progress } from './Progress'
 
 export function Journal() {
   const data = useData()!
+  const { state } = useAuth()
+  const firstName = state.status === 'signedIn' ? state.user.name.split(' ')[0] : ''
   const draft = useDraft()
   const [params, setParams] = useSearchParams()
   const view = params.get('view') === 'progress' ? 'progress' : 'history'
@@ -30,7 +32,7 @@ export function Journal() {
       <header className="page-head">
         <p className="eyebrow">
           {greeting()}
-          {data.profile.name ? `, ${data.profile.name}` : ''}
+          {firstName && `, ${firstName}`}
         </p>
         <h1 className="title">Your journal</h1>
       </header>

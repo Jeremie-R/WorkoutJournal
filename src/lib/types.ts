@@ -36,7 +36,6 @@ export interface Workout {
 }
 
 export interface Profile {
-  name: string
   unit: Unit
   /** 1 = weeks start on Monday, 0 = Sunday. */
   weekStart: 0 | 1
@@ -55,7 +54,6 @@ export interface Data {
 }
 
 export const DEFAULT_PROFILE: Profile = {
-  name: '',
   unit: 'kg',
   weekStart: 1,
   weightStep: 2.5,

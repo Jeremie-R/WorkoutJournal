@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { Aura } from '../components/Aura'
@@ -98,7 +97,6 @@ function Sessions({ data }: { data: Data }) {
 
 function ProfileSettings({ data }: { data: Data }) {
   const { profile } = data
-  const [name, setName] = useState(profile.name)
   const set = (patch: Partial<Profile>) => saveProfile({ ...profile, ...patch })
 
   const exportData = () => {
@@ -112,23 +110,6 @@ function ProfileSettings({ data }: { data: Data }) {
   return (
     <div className="stack">
       <AccountCard />
-
-      <section>
-        <h2 className="section-title">You</h2>
-        <div className="group group--form">
-          <label className="form-row">
-            <span className="form-row__label">Name</span>
-            <input
-              className="input input--bare"
-              value={name}
-              placeholder="Optional"
-              autoComplete="given-name"
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => name.trim() !== profile.name && set({ name: name.trim() })}
-            />
-          </label>
-        </div>
-      </section>
 
       <section>
         <h2 className="section-title">Preferences</h2>

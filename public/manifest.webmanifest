@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Workout Journal",
+  "short_name": "Workouts",
+  "description": "A simple, calm workout log: set up your sessions, check off your sets, watch your progress.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    { "src": "/icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/app-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log a workout",
+      "short_name": "Log",
+      "url": "/log",
+      "icons": [{ "src": "/icons/app-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

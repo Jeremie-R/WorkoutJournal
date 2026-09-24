@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1200px; height: 760px; overflow: hidden; }
+  body {
+    position: relative;
+    background:
+      radial-gradient(34% 50% at 12% 22%, #ffc2ad 0%, transparent 70%),
+      radial-gradient(36% 55% at 50% 0%, #f8b6d0 0%, transparent 70%),
+      radial-gradient(34% 50% at 90% 20%, #d6c1f7 0%, transparent 70%),
+      radial-gradient(50% 50% at 50% 100%, #ffe1b2 0%, transparent 70%),
+      #fbeef2;
+  }
+  body::after {
+    content: ''; position: absolute; inset: 0; opacity: .5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 2.4 0 0 0 -1.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .row { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 44px; z-index: 1; }
+  .phone {
+    width: 300px; height: 649px; border-radius: 40px; overflow: hidden; background: #fff;
+    box-shadow: 0 0 0 1px rgba(18,18,20,.06), 0 30px 70px rgba(90,40,80,.20), 0 6px 18px rgba(90,40,80,.10);
+  }
+  .phone img { width: 100%; height: 100%; display: block; }
+  .phone.mid { transform: translateY(-14px); }
+  .phone.side { transform: translateY(18px); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="phone side"><img src="journal.jpg"></div>
+    <div class="phone mid"><img src="workout.jpg"></div>
+    <div class="phone side"><img src="progress.jpg"></div>
+  </div>
+</body>
+</html>

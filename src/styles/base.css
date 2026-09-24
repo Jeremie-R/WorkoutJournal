@@ -102,7 +102,8 @@ img {
   padding: calc(var(--safe-t) + 20px) var(--gutter) calc(128px + var(--safe-b));
 }
 
-.page > :not(.aura) {
+/* Content sits above the aura. The sticky footer is left out so it keeps position: fixed. */
+.page > :not(.aura, .sticky-foot) {
   position: relative;
   z-index: 1;
 }

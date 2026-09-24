@@ -25,7 +25,7 @@ export function LogPick() {
 
       <div className="sheet">
         <h1 className="title title--center">What are you training today?</h1>
-        <p className="subtitle subtitle--center">Pick a session, then confirm today’s weight and sets.</p>
+        <p className="subtitle subtitle--center">Pick a session, then confirm today’s sets and reps.</p>
 
         {draft && (
           <Link to="/log/active" className="banner">

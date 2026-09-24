@@ -1,77 +1,93 @@
+<div align="center">
+
+<img src="docs/screenshots/hero.jpg" alt="Workout Journal: the journal with a weekly streak and calendar, a workout in progress, and an exercise's progress" width="100%">
+
 # Workout Journal
 
-A small, calm workout log. Mobile first, installable as an app, and ready to become an Android app.
+A calm, simple workout log for the gym.<br>
+Plan your sessions once, check off your sets as you go, and watch every exercise get stronger.
 
-- **Setup**: create the kinds of sessions you train (Legs, Glutes, Upper body…) with an icon, their sets and reps, and the exercises they include (Squat, Lunges, Plank…). Sets and reps are the session's and apply to every exercise; an exercise only has its own value (a weight, a time, or a count like 10 push-ups), and even that is optional. Exercises are shared between sessions. An Exercises tab lists them all; a Profile tab holds units (kg/lb), week start, weight step and other small preferences.
-- **Log**: tap **+**, pick a session, confirm today's sets and reps, start. A set is one round through every exercise, so you check off each set once for the whole workout. Below, the exercises list their values; tap one to change today's value. Sets × reps can be changed for the whole workout, and exercises can be added or removed. Add a note, finish. An unfinished workout survives a locked phone or closed tab.
-- **Review**: weekly streak, a month calendar with workout days highlighted, and the full history, newest first, with sets done per workout. Tap a workout to see its exercises and notes, edit anything, or delete it.
-- **Progress**: per exercise, across every session that includes it: a weight chart (or reps, or time), and reps completed over the last 30 days with the change from the 30 days before.
+**[Open Workout Journal →](https://workout-journal-three.vercel.app)**
 
-## Run it
+</div>
 
-```bash
-bun install
-bun run dev        # http://localhost:5173 (also on your LAN, so you can open it on a phone)
-bun run build      # type-check + production build into dist/
-bun run preview    # serve dist/ locally (service worker enabled)
-```
+---
 
-`bun` lives in `~/.local/bin` on this Mac (`export PATH="$HOME/.local/bin:$PATH"`). `npm` works too.
+## Plan your sessions once
 
-Without Firebase env vars the app runs in **device-only mode**: "Continue without an account" stores everything in the browser's localStorage. The Google button is shown but disabled.
+Create a session for each kind of workout you do, like Glutes, Legs or Upper body. Give it a 3D icon and its sets and reps, then add the exercises it includes. Pick from a list of common exercises or type your own.
 
-## How it's built
+Each exercise is measured the way it's done: **weight** for lifts, **reps** for bodyweight moves like push-ups, **time** for a plank or the treadmill. Setting a value is optional. Leave it empty and it's filled in from your first workout.
 
-| | |
-|---|---|
-| App | Vite + React 19 + TypeScript, React Router, plain CSS (tokens in `src/styles/base.css`) |
-| Data | `src/data/backend.ts` interface with two implementations: `localBackend.ts` (device) and `firebase.ts` (Firestore, per user). Screens only use `src/data/store.ts`. |
-| Sign-in | Firebase Auth with Google, loaded lazily only when configured (`src/auth/AuthProvider.tsx`) |
-| Offline | `sw.template.js` → `dist/sw.js` at build time precaches the app shell and icons. Firestore's persistent cache queues writes made without signal. |
-| Icons | 3D icons from [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT, see `public/icons/fluent/LICENSE.txt`). Users can also type any emoji. |
+Exercises are shared between sessions. The Squat in Legs and the Squat in Glutes are the same exercise, so its progress follows it everywhere.
 
-Data model (`src/lib/types.ts`):
-- **Exercise**: a shared library entry ("Squat") with how it's measured: `weight`, `reps` (bodyweight counts) or `time` (holds, cardio).
-- **SessionType**: name, icon, sets and reps (shared by all its exercises), and a list of planned exercises. Each planned value (weight, time, or rep count) is optional; an empty one is taken from last time.
-- **Workout**: the session's reps, a done flag per set (a set being one round through all the exercises), and the exercises with their values. Names are copied so history survives renames and deletions.
+<p align="center">
+  <img src="docs/screenshots/setup.jpg" alt="Setup: the list of sessions" width="240">
+  <img src="docs/screenshots/session-editor.jpg" alt="A session's sets, reps and exercises" width="240">
+  <img src="docs/screenshots/picker.jpg" alt="Adding exercises: your own, suggestions, or a new one" width="240">
+</p>
 
-Weights are always stored in kg and converted for display. Older documents (first version: one weight per session and a list of sets; then per-exercise checked sets) are upgraded when read (`upgradeSets` in `normalizeData`), so nothing needs migrating by hand.
+## Log your workout at the gym
 
-## Turning on Google sign-in (Firebase)
+Tap **+**, pick today's session, confirm sets × reps, and start. A set is one round through all the exercises: go through them, then tick the set.
 
-1. Create a project at [console.firebase.google.com](https://console.firebase.google.com) (the free Spark plan is plenty).
-2. **Build → Authentication → Sign-in method**: enable **Google**.
-3. **Build → Firestore Database**: create a database (production mode, pick a region close to you). Paste `firestore.rules` into the Rules tab (or `firebase deploy --only firestore:rules`). Each user can only read and write `users/{their uid}/…`.
-4. **Project settings → Your apps → Web app**: register the app and copy the config values into `.env.local` (see `.env.example`), and into the Vercel project's environment variables:
-   ```
-   VITE_FIREBASE_API_KEY=…
-   VITE_FIREBASE_PROJECT_ID=…
-   VITE_FIREBASE_APP_ID=…
-   ```
-5. **Authentication → Settings → Authorized domains**: add the production domain.
-6. **Google Cloud Console → APIs & Services → Credentials → Web client (auto created by Google Service)**: add `https://<domain>/__/auth/handler` (and `http://localhost:5173/__/auth/handler` for dev) to the authorized redirect URIs.
+- **Heavier today?** Tap an exercise to change its weight, reps or time for this workout.
+- **Change of plan?** Add or remove an exercise, or change the number of sets on the fly.
+- **Picks up from last time.** Each exercise starts at its planned value, or at last time's if you haven't set one. You can also choose to always start from last time.
+- **Made for the gym floor.** Big tap targets, a timer, an option to keep the screen on, and it works without signal. Lock your phone and your workout is still there when you come back.
 
-Sign-in uses a popup and falls back to a full-page redirect where popups are blocked (installed app, some mobile browsers). To keep that redirect first-party (Chrome and Safari partition third-party storage, and the Android wrapper needs it), Firebase's sign-in handler is served from our own domain: `authDomain` is the current host, `vercel.json` rewrites `/__/auth/*` and `/__/firebase/*` to `<project-id>.firebaseapp.com`, and `vite.config.ts` proxies the same paths in dev.
+<p align="center">
+  <img src="docs/screenshots/log-pick.jpg" alt="Picking today's session" width="200">
+  <img src="docs/screenshots/log-confirm.jpg" alt="Confirming sets and reps before starting" width="200">
+  <img src="docs/screenshots/workout.jpg" alt="A workout in progress: sets checked off, exercises with their weights" width="200">
+  <img src="docs/screenshots/workout-adjust.jpg" alt="Changing an exercise's weight during the workout" width="200">
+</p>
 
-Current project: `workout-journal-dd95f` (Firestore in `europe-west1`), live at https://workout-journal-three.vercel.app.
+## Look back on your journal
 
-After someone signs in, workouts they logged before (in device-only mode) are offered for import with a banner on the Journal.
+Your weekly streak keeps you going: every week with at least one workout counts. The calendar shows each day you trained, and the history lists every workout with its sets and exercises. Tap one to read your notes, fix a detail, or delete it.
 
-## Deploying (Vercel)
+<p align="center">
+  <img src="docs/screenshots/journal.jpg" alt="Journal: weekly streak and calendar" width="240">
+  <img src="docs/screenshots/history.jpg" alt="Workout history, newest first" width="240">
+  <img src="docs/screenshots/workout-detail.jpg" alt="A past workout's details" width="240">
+</p>
 
-`vercel.json` already handles SPA routing and cache headers (hashed assets are immutable, `sw.js` is never cached). In Vercel: **Add New → Project → import the GitHub repo**. The Vite preset is detected; the build runs `bun run build` and publishes `dist/`. Every push to `main` deploys; branches get preview URLs (add those domains to Firebase's authorized domains if you want to sign in on previews).
+## See your progress
 
-## Android later
+Pick an exercise to see how its weight has moved over time, your best, how far you've come since you started, and the reps you completed in the last 30 days compared with the 30 before. Exercises done without weights are followed by reps or time instead.
 
-The web app is already a complete PWA: manifest (`public/manifest.webmanifest`) with `any` and `maskable` icons, standalone display, portrait orientation, theme colors, a "Log a workout" shortcut, and a service worker for offline use.
+<p align="center">
+  <img src="docs/screenshots/progress.jpg" alt="Progress for Hip thrust: reps in the last 30 days and a weight chart" width="240">
+  <img src="docs/screenshots/exercises.jpg" alt="All your exercises and the sessions they're part of" width="240">
+</p>
 
-The recommended wrapper is a **Trusted Web Activity** (Chrome running the deployed site full screen):
-- Google sign-in, offline cache and updates work exactly as on the web: deploy the site and the app updates.
-- Generate it with [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap): `npx @bubblewrap/cli init --manifest https://<domain>/manifest.webmanifest`, then `bubblewrap build`.
-- Prove we own the site: copy `android/assetlinks.template.json` to `public/.well-known/assetlinks.json` with the package name and the SHA-256 of the signing key (Play Console → App integrity), then redeploy.
+## Sign in, or don't
 
-A Capacitor wrapper (bundling the web build inside the app) is possible too. Google blocks its sign-in page inside embedded WebViews, though, so it would need a native sign-in plugin (e.g. `@capacitor-firebase/authentication`). It's only worth it if we want native features such as a home-screen widget.
+<img src="docs/screenshots/welcome.jpg" alt="Welcome screen with Google sign-in" width="220" align="right">
 
-## Design
+**Continue with Google** to keep your journal safe and in sync across your devices. Your data is private to your account.
 
-White background, near-black text and pill buttons, a serif display face (Newsreader) over Inter, and soft grainy pastel gradients ("auras") as set pieces at the top of each screen: dawn (Journal), lilac (logging), sunset (the active workout, which warms up as sets get checked), mint (Setup). Desktop is the same single column, centered.
+Prefer not to sign in? Use the app **without an account** and everything stays on your device. If you sign in later, you can move those workouts into your account with one tap.
+
+Make it yours in **Setup → Profile**: kg or lb, the day your week starts, how much + and − change a weight, where starting values come from, keeping the screen on during workouts, and a JSON export of all your data.
+
+<br clear="right">
+
+## Install it like an app
+
+Workout Journal runs in your browser and installs on your phone's home screen:
+
+- **Android (Chrome):** open the app, tap ⋮, then **Add to Home screen** or **Install app**.
+- **iPhone (Safari):** tap **Share**, then **Add to Home Screen**.
+
+It opens full screen, like any other app, and keeps working offline. An Android app for the Play Store is planned.
+
+## Credits
+
+- 3D icons: [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT)
+- Fonts: [Newsreader](https://fonts.google.com/specimen/Newsreader) and [Inter](https://rsms.me/inter/) (SIL Open Font License)
+
+## For developers
+
+Built with Vite, React and TypeScript, with Firebase for Google sign-in and storage, and deployed on Vercel. Setup, architecture, deployment and the Android plan are in **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.

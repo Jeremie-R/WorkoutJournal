@@ -511,99 +511,230 @@
   transition: width 0.4s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
 
-.sets {
-  margin-top: 12px;
+.ex-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
 }
 
-.set {
+.ex-card {
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition:
+    background 0.25s,
+    box-shadow 0.25s;
+}
+
+.ex-card.is-complete {
+  background:
+    linear-gradient(120deg, rgba(247, 166, 199, 0.22), rgba(198, 177, 246, 0.16)),
+    var(--surface);
+}
+
+.ex-card.is-open {
+  background: #fff;
+  box-shadow:
+    var(--shadow),
+    inset 0 0 0 1px var(--line);
+}
+
+.ex-card__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 68px;
-  padding: 8px 12px 8px 6px;
-  transition: background 0.25s;
-}
-
-.set.is-done {
-  background: linear-gradient(90deg, rgba(247, 166, 199, 0.2), rgba(198, 177, 246, 0.14));
-}
-
-.set__toggle {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  padding: 8px 10px;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 14px 4px 16px;
   border: 0;
-  border-radius: 16px;
   background: none;
   text-align: left;
 }
 
-.check {
+.ex-card__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font: 600 17px/1.25 var(--sans);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ex-card__value {
+  flex: none;
+  font: 600 15px var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-card__value.is-empty {
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.ex-card__chevron,
+.plan-row__chevron {
   display: grid;
   flex: none;
+  color: var(--ink-3);
+  transition: transform 0.2s;
+}
+
+.ex-card.is-open .ex-card__chevron,
+.plan-row.is-open .plan-row__chevron {
+  transform: rotate(90deg);
+}
+
+.ex-card__sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 16px 16px;
+}
+
+.set-dot {
+  display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
+  border: 0;
   border-radius: 50%;
   background: #fff;
-  color: transparent;
+  color: var(--ink-2);
   box-shadow: inset 0 0 0 2px var(--line-strong);
+  font: 600 15px var(--sans);
+  font-variant-numeric: tabular-nums;
   transition:
     background 0.2s,
     color 0.2s,
     box-shadow 0.2s;
 }
 
-.set.is-done .check {
+.set-dot.is-done {
   background: var(--ink);
   color: #fff;
   box-shadow: none;
   animation: pop 0.32s cubic-bezier(0.3, 0.7, 0.2, 1.2);
 }
 
-.set__label {
-  font: 600 17px var(--sans);
+.ex-card__edit,
+.plan-row__edit {
+  border-top: 1px solid var(--line);
+  background: #fff;
 }
 
-.set--actions {
-  justify-content: flex-start;
-  gap: 4px;
-  min-height: 56px;
-  padding: 8px 10px;
+.ex-card__edit > * + *,
+.plan-row__edit > * + * {
+  border-top: 1px solid var(--line);
 }
 
-.set--static {
-  min-height: 56px;
-  padding-right: 18px;
+.ex-card__remove {
+  width: 100%;
+  border-radius: 0;
+  color: var(--danger);
 }
 
-.set--static .check {
-  width: 28px;
-  height: 28px;
-  animation: none !important;
+.done-row {
+  padding: 14px 16px;
 }
 
-.set--static:not(.is-done) .check {
-  background: transparent;
-  color: var(--ink-3);
+.done-row__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.set__reps {
-  color: var(--ink-2);
-  font: 500 15px var(--sans);
+.done-row__name {
+  font: 600 16px/1.3 var(--sans);
+}
+
+.done-row__value {
+  font: 600 15px var(--sans);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.set__reps small {
-  color: var(--ink-3);
-  font-size: 13px;
+.done-row__sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mini-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+}
+
+.mini-dot.is-done {
+  background: var(--ink);
+  box-shadow: none;
 }
 
 /* ---------- Setup ---------- */
+
+.hero__icon-btn {
+  position: relative;
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.hero__icon-btn .hero__icon {
+  margin-bottom: 0;
+}
+
+.hero__icon-edit {
+  position: absolute;
+  right: -4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.plan-row.is-open {
+  background: #fff;
+}
+
+.plan-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.plan-row__remove {
+  margin-left: auto;
+  color: var(--danger);
+}
+
+.plan-add {
+  min-height: 60px;
+}
+
+.plan-add__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+}
 
 .suggest {
   display: flex;

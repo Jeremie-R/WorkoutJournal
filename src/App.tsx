@@ -4,6 +4,7 @@ import { useAuth } from './auth/AuthProvider'
 import { Icon } from './components/Icon'
 import { useDraft } from './data/draft'
 import { useData } from './data/store'
+import { ExerciseEditor } from './screens/ExerciseEditor'
 import { Journal } from './screens/Journal'
 import { LogActive } from './screens/LogActive'
 import { LogConfigure } from './screens/LogConfigure'
@@ -34,6 +35,7 @@ export function App() {
         <Route path="log/:typeId" element={<LogConfigure />} />
         <Route path="workout/:id" element={<WorkoutDetail />} />
         <Route path="setup/session/:id" element={<SessionEditor />} />
+        <Route path="setup/exercise/:id" element={<ExerciseEditor />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

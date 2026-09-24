@@ -12,8 +12,7 @@ import { readLocalData } from '../data/localBackend'
 import { useData } from '../data/store'
 import { dayKey, formatDay, formatLongDay, formatMonth, greeting, summarizeWeeks, type WeekSummary } from '../lib/dates'
 import type { Data, Workout } from '../lib/types'
-import { formatWeight } from '../lib/units'
-import { doneSets, setsSummary, workoutLook } from '../lib/workouts'
+import { exerciseName, setCount, workoutLook } from '../lib/workouts'
 import { Progress } from './Progress'
 
 export function Journal() {
@@ -100,14 +99,14 @@ function StreakCard({ summary }: { summary: WeekSummary }) {
 }
 
 function ResumeBanner({ draft }: { draft: Draft }) {
-  const done = draft.sets.filter((s) => s.done).length
+  const { done, total } = setCount(draft.exercises)
   return (
     <Link to="/log/active" className="banner">
       <SessionIcon icon={draft.typeIcon} size={36} />
       <div className="banner__body">
         <p className="banner__title">{draft.typeName} in progress</p>
         <p className="banner__meta">
-          {done} of {draft.sets.length} sets done
+          {done} of {total} sets done
         </p>
       </div>
       <span className="banner__action">Resume</span>
@@ -212,7 +211,8 @@ function History({ data }: { data: Data }) {
 
 function WorkoutRow({ workout, data }: { workout: Workout; data: Data }) {
   const { name, icon } = workoutLook(workout, data.types)
-  const done = doneSets(workout.sets)
+  const { done, total } = setCount(workout.exercises)
+  const named = workout.exercises.filter((ex) => ex.exerciseId)
   return (
     <Link to={`/workout/${workout.id}`} className="row row--link">
       <span className="row__icon">
@@ -222,13 +222,17 @@ function WorkoutRow({ workout, data }: { workout: Workout; data: Data }) {
         <span className="row__title">{name}</span>
         <span className="row__meta">
           {formatDay(workout.startedAt)}
-          {done < workout.sets.length && ` · ${done}/${workout.sets.length} sets`}
+          {named.length > 0 && ` · ${named.length} exercise${named.length > 1 ? 's' : ''}`}
           {workout.note && ' · Note'}
         </span>
+        {named.length > 0 && <span className="row__meta row__meta--soft row__list">{named.map((ex) => exerciseName(ex, data.exercises)).join(', ')}</span>}
       </span>
       <span className="row__end">
-        <span className="row__value">{formatWeight(workout.weightKg, data.profile.unit)}</span>
-        <span className="row__meta">{setsSummary(workout.sets)}</span>
+        <span className="row__value">
+          {done}
+          {done < total && <small className="row__total">/{total}</small>}
+        </span>
+        <span className="row__meta">sets</span>
       </span>
     </Link>
   )

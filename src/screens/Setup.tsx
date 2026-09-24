@@ -5,16 +5,19 @@ import { useConfirm, useToast } from '../components/Feedback'
 import { GoogleMark, Icon } from '../components/Icon'
 import { Segmented } from '../components/Segmented'
 import { SessionIcon } from '../components/SessionIcon'
-import { saveProfile, saveType, useData } from '../data/store'
+import { saveExercise, saveProfile, saveType, useData } from '../data/store'
+import { MEASURE_LABEL } from '../lib/catalog'
 import { dayKey } from '../lib/dates'
 import type { Data, Profile } from '../lib/types'
-import { DEFAULT_STEP, formatNumber, formatWeight, WEIGHT_STEPS } from '../lib/units'
-import { suggestedPreview, suggestedSessions } from '../lib/workouts'
+import { DEFAULT_STEP, formatNumber, WEIGHT_STEPS } from '../lib/units'
+import { sessionMeta, suggestedPreview, suggestedSetup, usedIn } from '../lib/workouts'
+
+type Tab = 'sessions' | 'exercises' | 'profile'
 
 export function Setup() {
   const data = useData()!
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') === 'profile' ? 'profile' : 'sessions'
+  const tab: Tab = params.get('tab') === 'profile' ? 'profile' : params.get('tab') === 'exercises' ? 'exercises' : 'sessions'
 
   return (
     <main className="page">
@@ -27,20 +30,29 @@ export function Setup() {
       <Segmented
         label="Setup section"
         value={tab}
-        onChange={(v) => setParams(v === 'profile' ? { tab: v } : {}, { replace: true })}
+        onChange={(v) => setParams(v === 'sessions' ? {} : { tab: v }, { replace: true })}
         options={[
           { value: 'sessions', label: 'Sessions' },
+          { value: 'exercises', label: 'Exercises' },
           { value: 'profile', label: 'Profile' },
         ]}
       />
 
-      {tab === 'sessions' ? <Sessions data={data} /> : <ProfileSettings data={data} />}
+      {tab === 'sessions' && <Sessions data={data} />}
+      {tab === 'exercises' && <Exercises data={data} />}
+      {tab === 'profile' && <ProfileSettings data={data} />}
     </main>
   )
 }
 
 function Sessions({ data }: { data: Data }) {
-  const { types, profile } = data
+  const { types, exercises } = data
+
+  const addSuggestions = () => {
+    const setup = suggestedSetup(exercises, 0)
+    setup.exercises.forEach(saveExercise)
+    setup.types.forEach(saveType)
+  }
 
   if (types.length === 0) {
     return (
@@ -50,7 +62,7 @@ function Sessions({ data }: { data: Data }) {
         </div>
         <h2 className="empty__title">What do you train?</h2>
         <p className="empty__text">
-          Create a session for each kind of workout you do, with its usual sets, reps and weight. When you log, you just confirm and go.
+          Create a session for each kind of workout you do, like Legs, and the exercises it includes. When you log, you just confirm and go.
         </p>
         <div className="suggest">
           <div className="suggest__icons" aria-hidden="true">
@@ -59,7 +71,7 @@ function Sessions({ data }: { data: Data }) {
             ))}
           </div>
           <p className="suggest__names">{suggestedPreview.map((s) => s.name).join(' · ')}</p>
-          <button className="btn btn--secondary btn--block" onClick={() => suggestedSessions(profile.unit, 0).forEach(saveType)}>
+          <button className="btn btn--secondary btn--block" onClick={addSuggestions}>
             Add these suggestions
           </button>
         </div>
@@ -80,9 +92,7 @@ function Sessions({ data }: { data: Data }) {
             </span>
             <span className="row__body">
               <span className="row__title">{type.name}</span>
-              <span className="row__meta">
-                {type.sets} sets × {type.reps} reps · {formatWeight(type.weightKg, profile.unit)}
-              </span>
+              <span className="row__meta">{sessionMeta(type)}</span>
             </span>
             <Icon name="chevron" size={20} />
           </Link>
@@ -91,6 +101,47 @@ function Sessions({ data }: { data: Data }) {
       <Link to="/setup/session/new" className="btn btn--secondary btn--block">
         <Icon name="plus" size={18} /> New session
       </Link>
+    </section>
+  )
+}
+
+function Exercises({ data }: { data: Data }) {
+  const { exercises, types, workouts } = data
+
+  if (exercises.length === 0) {
+    return (
+      <section className="empty">
+        <div className="empty__art">
+          <SessionIcon icon="person_lifting_weights" size={96} />
+        </div>
+        <h2 className="empty__title">Your exercises</h2>
+        <p className="empty__text">Exercises you add to sessions show up here. The same exercise can be part of several sessions, and its progress follows it everywhere.</p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="stack">
+      <div className="group">
+        {exercises.map((exercise) => {
+          const sessions = usedIn(exercise.id, types)
+          const times = workouts.filter((w) => w.exercises.some((ex) => ex.exerciseId === exercise.id && ex.done.some(Boolean))).length
+          return (
+            <Link key={exercise.id} to={`/setup/exercise/${exercise.id}`} className="row row--link row--compact">
+              <span className="row__body">
+                <span className="row__title">{exercise.name}</span>
+                <span className="row__meta">
+                  {MEASURE_LABEL[exercise.measure]}
+                  {sessions.length ? ` · ${sessions.join(', ')}` : ' · not in a session'}
+                  {times > 0 && ` · done ${times}×`}
+                </span>
+              </span>
+              <Icon name="chevron" size={20} />
+            </Link>
+          )
+        })}
+      </div>
+      <p className="fineprint fineprint--left">Add exercises from a session’s setup or during a workout.</p>
     </section>
   )
 }
@@ -155,16 +206,16 @@ function ProfileSettings({ data }: { data: Data }) {
           </div>
           <div className="form-row form-row--stack">
             <span className="form-row__label">
-              Starting weight
-              <small>What the weight is set to when you log a session</small>
+              Starting values
+              <small>What each exercise’s weight, reps or time start at when you log. Empty values always come from last time.</small>
             </span>
             <Segmented
               size="sm"
-              label="Starting weight"
+              label="Starting values"
               value={profile.prefill}
               onChange={(prefill) => set({ prefill })}
               options={[
-                { value: 'default', label: 'Session default' },
+                { value: 'default', label: 'Session setup' },
                 { value: 'last', label: 'Last workout' },
               ]}
             />
@@ -189,7 +240,7 @@ function ProfileSettings({ data }: { data: Data }) {
             <span className="row__body">
               <span className="row__title">Export as JSON</span>
               <span className="row__meta">
-                {data.workouts.length} workouts, {data.types.length} sessions
+                {data.workouts.length} workouts, {data.types.length} sessions, {data.exercises.length} exercises
               </span>
             </span>
           </button>

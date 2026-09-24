@@ -2,10 +2,10 @@
 
 A small, calm workout log. Mobile first, installable as an app, and ready to become an Android app.
 
-- **Setup**: create the kinds of sessions you train (Glutes, Arms, Upper body…) with an icon and their usual sets, reps and weight. A Profile tab holds units (kg/lb), week start, weight step, and the other small preferences.
-- **Log**: tap **+**, pick a session, confirm today's weight/sets/reps, start. Check off each set as you go, add a note, finish. An unfinished workout survives a locked phone or closed tab.
-- **Review**: weekly streak, a month calendar with workout days highlighted, and the full history, newest first. Tap a workout to see notes, edit anything, or delete it.
-- **Progress**: per session type, weight and reps completed across sessions.
+- **Setup**: create the kinds of sessions you train (Legs, Glutes, Upper body…) with an icon, their usual sets and reps, and the exercises they include (Squat, Lunges, Plank…). Exercises are shared between sessions, measured by weight, reps or time, and their values are optional. An Exercises tab lists them all; a Profile tab holds units (kg/lb), week start, weight step and other small preferences.
+- **Log**: tap **+**, pick a session, confirm today's sets and reps, start. Each exercise shows its weight/reps/time and a checkbox per set; tap an exercise to change today's values, add a set, or add/remove an exercise. Add a note, finish. An unfinished workout survives a locked phone or closed tab.
+- **Review**: weekly streak, a month calendar with workout days highlighted, and the full history, newest first, with sets done per workout. Tap a workout to see its exercises and notes, edit anything, or delete it.
+- **Progress**: per exercise, across every session that includes it: weight (or reps, or time) and reps completed over time.
 
 ## Run it
 
@@ -30,7 +30,12 @@ Without Firebase env vars the app runs in **device-only mode**: "Continue withou
 | Offline | `sw.template.js` → `dist/sw.js` at build time precaches the app shell and icons. Firestore's persistent cache queues writes made without signal. |
 | Icons | 3D icons from [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT, see `public/icons/fluent/LICENSE.txt`). Users can also type any emoji. |
 
-Data model (`src/lib/types.ts`): weights are always stored in kg and converted for display. Each workout keeps a copy of its session's name and icon, so history survives renaming or deleting a session.
+Data model (`src/lib/types.ts`):
+- **Exercise**: a shared library entry ("Squat") with how it's measured: `weight`, `reps` (bodyweight counts) or `time` (holds, cardio).
+- **SessionType**: name, icon, usual sets and reps, and a list of planned exercises. Each planned value (weight, reps, time, sets) is optional; empty ones fall back to the session's sets/reps or to what was logged last time.
+- **Workout**: the exercises as done, each with one set of values and a done flag per set. Names are copied so history survives renames and deletions.
+
+Weights are always stored in kg and converted for display. Documents from the first version (one weight per session, a list of sets) are upgraded when read (`normalizeData`), so nothing needs migrating by hand.
 
 ## Turning on Google sign-in (Firebase)
 

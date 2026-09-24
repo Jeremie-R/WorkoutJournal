@@ -7,37 +7,60 @@ interface StepperProps {
   hint?: string
   value: number
   onChange: (value: number) => void
-  step?: number
+  /** A fixed increment, or one that depends on the value (e.g. finer steps for short times). */
+  step?: number | ((value: number, dir: 1 | -1) => number)
   min?: number
   max?: number
   unit?: string
-  /** Shown instead of the number when the value is 0 (e.g. "Bodyweight"). */
+  /** Shown instead of the number when the value is 0 (e.g. "None"). */
   zeroLabel?: string
   integer?: boolean
+  /** Custom display and typing format, e.g. "1:30" for seconds. */
+  format?: (value: number) => string
+  parse?: (text: string) => number | null
 }
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
+const parseNumber = (text: string) => {
+  const n = parseFloat(text.replace(',', '.'))
+  return Number.isNaN(n) ? null : n
+}
+
 /** A labelled row with − value + controls. The value can also be typed. */
-export function Stepper({ label, hint, value, onChange, step = 1, min = 0, max = 9999, unit, zeroLabel, integer }: StepperProps) {
-  const [text, setText] = useState(formatNumber(value))
+export function Stepper({
+  label,
+  hint,
+  value,
+  onChange,
+  step = 1,
+  min = 0,
+  max = 9999,
+  unit,
+  zeroLabel,
+  integer,
+  format = formatNumber,
+  parse = parseNumber,
+}: StepperProps) {
+  const [text, setText] = useState(format(value))
   const [focused, setFocused] = useState(false)
 
   useEffect(() => {
-    if (!focused) setText(formatNumber(value))
+    if (!focused) setText(format(value))
   }, [value, focused])
 
   const commit = (raw: string) => {
-    const parsed = parseFloat(raw.replace(',', '.'))
-    if (Number.isNaN(parsed)) return setText(formatNumber(value))
+    const parsed = parse(raw)
+    if (parsed === null) return setText(format(value))
     const next = clamp(integer ? Math.round(parsed) : parsed, min, max)
     onChange(next)
-    setText(formatNumber(next))
+    setText(format(next))
   }
 
   // Snap to the step grid so 41 + 2.5 goes to 42.5, not 43.5.
   const bump = (dir: 1 | -1) => {
-    const snapped = dir > 0 ? Math.floor(value / step + 1e-9) * step + step : Math.ceil(value / step - 1e-9) * step - step
+    const size = typeof step === 'function' ? step(value, dir) : step
+    const snapped = dir > 0 ? Math.floor(value / size + 1e-9) * size + size : Math.ceil(value / size - 1e-9) * size - size
     onChange(clamp(Number(snapped.toFixed(2)), min, max))
   }
 
@@ -61,7 +84,7 @@ export function Stepper({ label, hint, value, onChange, step = 1, min = 0, max =
             aria-label={label}
             onFocus={(e) => {
               setFocused(true)
-              setText(formatNumber(value))
+              setText(format(value))
               requestAnimationFrame(() => e.target.select())
             }}
             onChange={(e) => setText(e.target.value)}
@@ -78,24 +101,6 @@ export function Stepper({ label, hint, value, onChange, step = 1, min = 0, max =
           <Icon name="plus" size={18} strokeWidth={2.2} />
         </button>
       </div>
-    </div>
-  )
-}
-
-/** Compact − 12 + control used on each set row. */
-export function MiniStepper({ value, onChange, min = 1, max = 999, suffix }: { value: number; onChange: (v: number) => void; min?: number; max?: number; suffix: string }) {
-  return (
-    <div className="mini-stepper">
-      <button type="button" onClick={() => onChange(clamp(value - 1, min, max))} disabled={value <= min} aria-label="One less">
-        <Icon name="minus" size={16} strokeWidth={2.2} />
-      </button>
-      <span className="mini-stepper__value">
-        {value}
-        <small>{suffix}</small>
-      </span>
-      <button type="button" onClick={() => onChange(clamp(value + 1, min, max))} disabled={value >= max} aria-label="One more">
-        <Icon name="plus" size={16} strokeWidth={2.2} />
-      </button>
     </div>
   )
 }

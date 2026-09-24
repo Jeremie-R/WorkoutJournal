@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { normalizeData, type Data, type Profile, type SessionType, type Workout } from '../lib/types'
+import { normalizeData, type Data, type Exercise, type Profile, type SessionType, type Workout } from '../lib/types'
 import type { Backend } from './backend'
 
 let backend: Backend | null = null
@@ -65,6 +65,22 @@ export function saveWorkout(workout: Workout) {
 
 export function deleteWorkout(id: string) {
   write((d) => ({ workouts: d.workouts.filter((w) => w.id !== id) }), (b) => b.deleteWorkout(id))
+}
+
+export function saveExercise(exercise: Exercise) {
+  const next = { ...exercise, updatedAt: Date.now() }
+  write((d) => ({ exercises: upsert(d.exercises, next) }), (b) => b.putExercise(next))
+}
+
+/** Removes an exercise from the library and from every session that includes it. Past workouts keep their copy. */
+export function deleteExercise(id: string) {
+  if (!data) return
+  for (const type of data.types) {
+    if (type.exercises.some((p) => p.exerciseId === id)) {
+      saveType({ ...type, exercises: type.exercises.filter((p) => p.exerciseId !== id) })
+    }
+  }
+  write((d) => ({ exercises: d.exercises.filter((e) => e.id !== id) }), (b) => b.deleteExercise(id))
 }
 
 export function saveProfile(profile: Profile) {

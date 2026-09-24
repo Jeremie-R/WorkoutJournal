@@ -1,23 +1,6 @@
-import type { SessionType, SetEntry, Unit, Workout } from './types'
-import { newId } from './types'
-import { tidyKg } from './units'
-
-/** "4 × 12" when every set has the same reps, otherwise "12 · 12 · 10". Counts done sets if any are done. */
-export function setsSummary(sets: SetEntry[]): string {
-  const done = sets.filter((s) => s.done)
-  const list = done.length ? done : sets
-  if (list.length === 0) return 'No sets'
-  const reps = list.map((s) => s.reps)
-  return reps.every((r) => r === reps[0]) ? `${list.length} × ${reps[0]}` : reps.join(' · ')
-}
-
-export function doneSets(sets: SetEntry[]) {
-  return sets.filter((s) => s.done).length
-}
-
-export function totalReps(sets: SetEntry[]) {
-  return sets.reduce((sum, s) => sum + (s.done ? s.reps : 0), 0)
-}
+import { CATALOG } from './catalog'
+import { newId, type Data, type Exercise, type LoggedExercise, type Measure, type PlannedExercise, type SessionType, type Unit, type Workout } from './types'
+import { formatSeconds, formatWeight } from './units'
 
 /** Shows the session's current name and icon, falling back to the copy saved with the workout. */
 export function workoutLook(workout: Workout, types: SessionType[]) {
@@ -25,28 +8,167 @@ export function workoutLook(workout: Workout, types: SessionType[]) {
   return { name: type?.name ?? workout.typeName, icon: type?.icon ?? workout.typeIcon }
 }
 
-export function makeSets(count: number, reps: number): SetEntry[] {
-  return Array.from({ length: count }, () => ({ reps, done: false }))
+/** The exercise's current name in the library, or the copy saved with the workout. */
+export function exerciseName(ex: LoggedExercise, exercises: Exercise[]): string {
+  return (ex.exerciseId && exercises.find((e) => e.id === ex.exerciseId)?.name) || ex.name
 }
 
-const SUGGESTED = [
-  { name: 'Glutes', icon: 'peach', sets: 4, reps: 12, weightKg: 40 },
-  { name: 'Arms', icon: 'flexed_biceps', sets: 3, reps: 12, weightKg: 10 },
-  { name: 'Upper body', icon: 'mechanical_arm', sets: 4, reps: 10, weightKg: 30 },
-  { name: 'Legs', icon: 'leg', sets: 4, reps: 10, weightKg: 60 },
-  { name: 'Core', icon: 'bullseye', sets: 3, reps: 15, weightKg: 0 },
+export function setCount(exercises: LoggedExercise[]) {
+  let done = 0
+  let total = 0
+  for (const ex of exercises) {
+    total += ex.done.length
+    done += ex.done.filter(Boolean).length
+  }
+  return { done, total }
+}
+
+/** "40 kg × 12", "15 reps", "1:00", or "" when there's nothing to show. */
+export function formatValue(ex: Pick<LoggedExercise, 'measure' | 'weightKg' | 'reps' | 'seconds'>, unit: Unit): string {
+  if (ex.measure === 'time') return ex.seconds ? formatSeconds(ex.seconds) : ''
+  if (ex.measure === 'weight' && ex.weightKg) return ex.reps ? `${formatWeight(ex.weightKg, unit)} × ${ex.reps}` : formatWeight(ex.weightKg, unit)
+  return ex.reps ? `${ex.reps} reps` : ''
+}
+
+/** True when the exercise's key number (its weight or time) hasn't been entered yet. */
+export function missingValue(ex: Pick<LoggedExercise, 'measure' | 'weightKg' | 'seconds'>): boolean {
+  return (ex.measure === 'weight' && !ex.weightKg) || (ex.measure === 'time' && !ex.seconds)
+}
+
+/** Progress is followed per library exercise; sessions without exercises count as their own. */
+export function trackKey(workout: Workout, ex: LoggedExercise): string {
+  return ex.exerciseId ?? `session:${workout.typeId}`
+}
+
+/** The most recent time this exercise was logged (workouts are sorted newest first). */
+export function lastLogged(key: string, workouts: Workout[]): LoggedExercise | undefined {
+  for (const w of workouts) {
+    const hit = w.exercises.find((ex) => trackKey(w, ex) === key)
+    if (hit) return hit
+  }
+  return undefined
+}
+
+function choose<T>(planned: T | null | undefined, last: T | null | undefined, fromLast: boolean): T | null {
+  return fromLast ? (last ?? planned ?? null) : (planned ?? last ?? null)
+}
+
+/**
+ * Today's starting values for one exercise. With the "session setup" preference the plan wins and
+ * last time only fills gaps; with "last workout" it's the other way round. Reps for weighted
+ * exercises follow the session unless the exercise overrides them.
+ */
+export function startExercise(
+  ex: Exercise,
+  plan: Partial<PlannedExercise>,
+  last: LoggedExercise | undefined,
+  fromLast: boolean,
+  sets: number,
+  reps: number,
+): LoggedExercise {
+  const count =
+    ex.measure === 'time'
+      ? null
+      : ex.measure === 'reps'
+        ? (choose(plan.reps, last?.reps, fromLast) ?? reps)
+        : (plan.reps ?? (fromLast ? last?.reps : null) ?? reps)
+  return {
+    exerciseId: ex.id,
+    name: ex.name,
+    measure: ex.measure,
+    weightKg: ex.measure === 'weight' ? choose(plan.weightKg, last?.weightKg, fromLast) : null,
+    reps: count,
+    seconds: ex.measure === 'time' ? choose(plan.seconds, last?.seconds, fromLast) : null,
+    done: Array<boolean>(plan.sets ?? sets).fill(false),
+  }
+}
+
+/** Everything a workout of this session starts with, for the chosen sets and reps. */
+export function planWorkout(type: SessionType, data: Data, sets: number, reps: number): LoggedExercise[] {
+  const fromLast = data.profile.prefill === 'last'
+  if (type.exercises.length === 0) {
+    // No exercises set up: the session itself is logged, like in the first version.
+    const last = lastLogged(`session:${type.id}`, data.workouts)
+    const planned = type.weightKg && type.weightKg > 0 ? type.weightKg : null
+    return [
+      {
+        exerciseId: null,
+        name: type.name,
+        measure: 'weight',
+        weightKg: choose(planned, last?.weightKg, fromLast),
+        reps,
+        seconds: null,
+        done: Array<boolean>(sets).fill(false),
+      },
+    ]
+  }
+  return type.exercises.flatMap((plan) => {
+    const ex = data.exercises.find((e) => e.id === plan.exerciseId)
+    return ex ? [startExercise(ex, plan, lastLogged(ex.id, data.workouts), fromLast, sets, reps)] : []
+  })
+}
+
+export function newExercise(name: string, measure: Measure): Exercise {
+  const now = Date.now()
+  return { id: newId(), name: name.trim(), measure, createdAt: now, updatedAt: now }
+}
+
+export function findByName(name: string, exercises: Exercise[]): Exercise | undefined {
+  const key = name.trim().toLowerCase()
+  return exercises.find((e) => e.name.toLowerCase() === key)
+}
+
+export function emptyPlan(exerciseId: string): PlannedExercise {
+  return { exerciseId, weightKg: null, reps: null, seconds: null, sets: null }
+}
+
+/** "4 × 12 · 3 exercises" */
+export function sessionMeta(type: SessionType): string {
+  const count = type.exercises.length
+  return `${type.sets} × ${type.reps} · ${count ? `${count} exercise${count > 1 ? 's' : ''}` : 'no exercises yet'}`
+}
+
+/** Names of the sessions that include this exercise. */
+export function usedIn(exerciseId: string, types: SessionType[]): string[] {
+  return types.filter((t) => t.exercises.some((p) => p.exerciseId === exerciseId)).map((t) => t.name)
+}
+
+type SuggestedExercise = string | { name: string; seconds?: number }
+
+const SUGGESTED: { name: string; icon: string; sets: number; reps: number; exercises: SuggestedExercise[] }[] = [
+  { name: 'Glutes', icon: 'peach', sets: 4, reps: 12, exercises: ['Hip thrust', 'Bulgarian split squat', 'Romanian deadlift', 'Cable kickback'] },
+  { name: 'Legs', icon: 'leg', sets: 4, reps: 10, exercises: ['Squat', 'Lunges', 'Leg press', 'Calf raise'] },
+  { name: 'Upper body', icon: 'mechanical_arm', sets: 4, reps: 10, exercises: ['Bench press', 'Seated row', 'Shoulder press', 'Lat pulldown'] },
+  { name: 'Arms', icon: 'flexed_biceps', sets: 3, reps: 12, exercises: ['Bicep curl', 'Hammer curl', 'Tricep pushdown'] },
+  { name: 'Core', icon: 'bullseye', sets: 3, reps: 15, exercises: [{ name: 'Plank', seconds: 45 }, 'Crunches', 'Russian twists'] },
 ]
 
 export const suggestedPreview = SUGGESTED.map(({ name, icon }) => ({ name, icon }))
 
-export function suggestedSessions(unit: Unit, startOrder: number): SessionType[] {
+/** The starter sessions, reusing exercises already in the library and creating the missing ones. */
+export function suggestedSetup(library: Exercise[], startOrder: number) {
   const now = Date.now()
-  return SUGGESTED.map((s, i) => ({
-    ...s,
+  const created: Exercise[] = []
+  const pick = (name: string) => {
+    const existing = findByName(name, [...library, ...created])
+    if (existing) return existing
+    const ex = newExercise(name, CATALOG.find((c) => c.name === name)?.measure ?? 'weight')
+    created.push(ex)
+    return ex
+  }
+  const types: SessionType[] = SUGGESTED.map((s, i) => ({
     id: newId(),
-    weightKg: tidyKg(s.weightKg, unit),
+    name: s.name,
+    icon: s.icon,
+    sets: s.sets,
+    reps: s.reps,
+    exercises: s.exercises.map((item) => {
+      const { name, seconds } = typeof item === 'string' ? { name: item, seconds: undefined } : item
+      return { ...emptyPlan(pick(name).id), seconds: seconds ?? null }
+    }),
     order: startOrder + i,
     createdAt: now + i,
     updatedAt: now,
   }))
+  return { types, exercises: created }
 }

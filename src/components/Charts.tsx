@@ -42,10 +42,15 @@ export function niceTicks(min: number, max: number, count = 4): number[] {
 
 const fmt = (v: number) => String(Number(v.toFixed(2)))
 
-interface ChartFrameProps {
+interface ChartProps {
   points: Point[]
   unit: string
   ariaLabel: string
+  /** How values read on ticks, labels and the tooltip (e.g. "1:30" for seconds). */
+  format?: (value: number) => string
+}
+
+interface ChartFrameProps extends ChartProps {
   zeroBased: boolean
   children: (geo: Geometry) => ReactNode
 }
@@ -56,13 +61,14 @@ interface Geometry {
   y: (v: number) => number
   band: number
   active: number | null
+  format: (value: number) => string
 }
 
 /**
  * Shared axes, gridlines, hover/tap readout and keyboard support for the two charts.
  * The readout snaps to the nearest session, so nobody has to hit a 2px line.
  */
-function ChartFrame({ points, unit, ariaLabel, zeroBased, children }: ChartFrameProps) {
+function ChartFrame({ points, unit, ariaLabel, format = fmt, zeroBased, children }: ChartFrameProps) {
   const [ref, width] = useWidth<HTMLDivElement>()
   const [active, setActive] = useState<number | null>(null)
 
@@ -110,7 +116,7 @@ function ChartFrame({ points, unit, ariaLabel, zeroBased, children }: ChartFrame
           <g key={t}>
             <line className="chart__grid" x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} />
             <text className="chart__tick" x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end">
-              {fmt(t)}
+              {format(t)}
             </text>
           </g>
         ))}
@@ -123,12 +129,12 @@ function ChartFrame({ points, unit, ariaLabel, zeroBased, children }: ChartFrame
           </text>
         )}
         {active !== null && <line className="chart__cross" x1={x(active)} x2={x(active)} y1={PAD.top - 8} y2={HEIGHT - PAD.bottom} />}
-        {children({ width, x, y, band, active })}
+        {children({ width, x, y, band, active, format })}
       </svg>
       {active !== null && (
         <div className="chart__tip" style={{ left: tipLeft }} aria-live="polite">
           <strong>
-            {fmt(points[active].value)} {unit}
+            {format(points[active].value)} {unit}
           </strong>
           <span>{points[active].label}</span>
         </div>
@@ -137,10 +143,11 @@ function ChartFrame({ points, unit, ariaLabel, zeroBased, children }: ChartFrame
   )
 }
 
-export function LineChart({ points, unit, ariaLabel }: { points: Point[]; unit: string; ariaLabel: string }) {
+export function LineChart(props: ChartProps) {
+  const { points } = props
   return (
-    <ChartFrame points={points} unit={unit} ariaLabel={ariaLabel} zeroBased={false}>
-      {({ x, y, active }) => {
+    <ChartFrame {...props} zeroBased={false}>
+      {({ x, y, active, format }) => {
         const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(i)},${y(p.value)}`).join(' ')
         const bottom = HEIGHT - PAD.bottom
         const area = `${line} L${x(points.length - 1)},${bottom} L${x(0)},${bottom} Z`
@@ -160,7 +167,7 @@ export function LineChart({ points, unit, ariaLabel }: { points: Point[]; unit: 
             ))}
             {active === null && (
               <text className="chart__value" x={x(last)} y={y(points[last].value) - 12} textAnchor={points.length > 1 ? 'end' : 'middle'} dx={points.length > 1 ? 6 : 0}>
-                {fmt(points[last].value)}
+                {format(points[last].value)}
               </text>
             )}
           </>
@@ -170,10 +177,11 @@ export function LineChart({ points, unit, ariaLabel }: { points: Point[]; unit: 
   )
 }
 
-export function ColumnChart({ points, unit, ariaLabel }: { points: Point[]; unit: string; ariaLabel: string }) {
+export function ColumnChart(props: ChartProps) {
+  const { points } = props
   return (
-    <ChartFrame points={points} unit={unit} ariaLabel={ariaLabel} zeroBased>
-      {({ x, y, band, active }) => {
+    <ChartFrame {...props} zeroBased>
+      {({ x, y, band, active, format }) => {
         const w = Math.min(24, Math.max(4, band - 4))
         const base = y(0)
         const last = points.length - 1
@@ -189,7 +197,7 @@ export function ColumnChart({ points, unit, ariaLabel }: { points: Point[]; unit
             })}
             {active === null && points[last].value > 0 && (
               <text className="chart__value" x={x(last)} y={y(points[last].value) - 8} textAnchor="middle">
-                {fmt(points[last].value)}
+                {format(points[last].value)}
               </text>
             )}
           </>

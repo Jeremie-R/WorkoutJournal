@@ -1,4 +1,4 @@
-import type { Data, Profile, SessionType, Workout } from '../lib/types'
+import type { Data, Exercise, Profile, SessionType, Workout } from '../lib/types'
 
 /**
  * Where the data lives. The UI only talks to this interface, so device-only storage
@@ -15,5 +15,7 @@ export interface Backend {
   deleteType(id: string): Promise<void>
   putWorkout(workout: Workout): Promise<void>
   deleteWorkout(id: string): Promise<void>
+  putExercise(exercise: Exercise): Promise<void>
+  deleteExercise(id: string): Promise<void>
   putProfile(profile: Profile): Promise<void>
 }

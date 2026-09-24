@@ -23,7 +23,7 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore'
-import { normalizeData, type Data, type Profile, type SessionType, type Workout } from '../lib/types'
+import { normalizeData, type Data, type Exercise, type Profile, type SessionType, type Workout } from '../lib/types'
 import type { Backend } from './backend'
 import { firebaseConfig } from './config'
 
@@ -74,20 +74,22 @@ export async function signInWithGoogle() {
 
 export const signOut = () => firebaseSignOut(auth)
 
-// Layout: users/{uid} holds the profile, users/{uid}/types and users/{uid}/workouts hold the rest.
+// Layout: users/{uid} holds the profile; users/{uid}/types, /workouts and /exercises hold the rest.
 export function createCloudBackend(uid: string): Backend {
   const userDoc = doc(db, 'users', uid)
   const typesCol = collection(userDoc, 'types')
   const workoutsCol = collection(userDoc, 'workouts')
+  const exercisesCol = collection(userDoc, 'exercises')
 
   return {
     kind: 'cloud',
     subscribe(listener) {
       let types: SessionType[] | null = null
       let workouts: Workout[] | null = null
+      let exercises: Exercise[] | null = null
       let profile: Profile | undefined | null = null
       const emit = () => {
-        if (types && workouts && profile !== null) listener(normalizeData({ types, workouts, profile }))
+        if (types && workouts && exercises && profile !== null) listener(normalizeData({ types, workouts, exercises, profile }))
       }
       const unsubs = [
         onSnapshot(typesCol, (snap) => {
@@ -96,6 +98,10 @@ export function createCloudBackend(uid: string): Backend {
         }),
         onSnapshot(workoutsCol, (snap) => {
           workouts = snap.docs.map((d) => d.data() as Workout)
+          emit()
+        }),
+        onSnapshot(exercisesCol, (snap) => {
+          exercises = snap.docs.map((d) => d.data() as Exercise)
           emit()
         }),
         onSnapshot(userDoc, (snap) => {
@@ -109,6 +115,8 @@ export function createCloudBackend(uid: string): Backend {
     deleteType: (id) => deleteDoc(doc(typesCol, id)),
     putWorkout: (workout) => setDoc(doc(workoutsCol, workout.id), workout),
     deleteWorkout: (id) => deleteDoc(doc(workoutsCol, id)),
+    putExercise: (exercise) => setDoc(doc(exercisesCol, exercise.id), exercise),
+    deleteExercise: (id) => deleteDoc(doc(exercisesCol, id)),
     putProfile: (profile) => setDoc(userDoc, { profile }, { merge: true }),
   }
 }
@@ -119,6 +127,7 @@ export async function importIntoAccount(uid: string, data: Data) {
   const writes = [
     ...data.types.map((t) => [doc(userDoc, 'types', t.id), t] as const),
     ...data.workouts.map((w) => [doc(userDoc, 'workouts', w.id), w] as const),
+    ...data.exercises.map((e) => [doc(userDoc, 'exercises', e.id), e] as const),
   ]
   // Firestore batches are capped at 500 writes.
   for (let i = 0; i < writes.length; i += 450) {

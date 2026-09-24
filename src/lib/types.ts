@@ -1,6 +1,34 @@
 export type Unit = 'kg' | 'lb'
 
-/** A kind of session the user trains, e.g. "Glutes" or "Upper body". Set up once, logged many times. */
+/** How an exercise is measured. Weight is the usual case; reps is for bodyweight counts, time for holds and cardio. */
+export type Measure = 'weight' | 'reps' | 'time'
+
+/** A reusable exercise ("Squat", "Plank"). Shared by every session that includes it, so its progress can be followed. */
+export interface Exercise {
+  id: string
+  name: string
+  measure: Measure
+  createdAt: number
+  updatedAt: number
+}
+
+/**
+ * An exercise planned inside a session type. Every value is optional: an empty one falls back to
+ * the session's sets/reps or to what was logged last time, so setup can stay as light as the user wants.
+ */
+export interface PlannedExercise {
+  exerciseId: string
+  /** Default weight in kg (measure 'weight'). */
+  weightKg: number | null
+  /** The count for 'reps' exercises; an override of the session's reps for 'weight' ones. */
+  reps: number | null
+  /** Seconds per set (measure 'time'). */
+  seconds: number | null
+  /** Override of the session's number of sets. */
+  sets: number | null
+}
+
+/** A kind of session the user trains, e.g. "Legs": its usual sets and reps, and the exercises it includes. */
 export interface SessionType {
   id: string
   name: string
@@ -8,19 +36,27 @@ export interface SessionType {
   icon: string
   sets: number
   reps: number
-  /** Default weight, always stored in kg. 0 means bodyweight. */
-  weightKg: number
+  exercises: PlannedExercise[]
   order: number
   createdAt: number
   updatedAt: number
+  /** Session-level weight from the first version; only used when the session has no exercises. */
+  weightKg?: number
 }
 
-export interface SetEntry {
-  reps: number
-  done: boolean
+/** An exercise as done in a workout. All its sets use the same values; `done` has one entry per set. */
+export interface LoggedExercise {
+  /** null when the session has no exercises: the session itself is logged as a single exercise. */
+  exerciseId: string | null
+  name: string
+  measure: Measure
+  weightKg: number | null
+  reps: number | null
+  seconds: number | null
+  done: boolean[]
 }
 
-/** One logged workout. Name and icon are copied so history survives renaming or deleting a session type. */
+/** One logged workout. Names and icon are copied so history survives renaming or deleting things. */
 export interface Workout {
   id: string
   typeId: string
@@ -28,8 +64,7 @@ export interface Workout {
   typeIcon: string
   startedAt: number
   finishedAt: number | null
-  weightKg: number
-  sets: SetEntry[]
+  exercises: LoggedExercise[]
   note: string
   createdAt: number
   updatedAt: number
@@ -41,7 +76,7 @@ export interface Profile {
   weekStart: 0 | 1
   /** Stepper increment, in the profile's unit. */
   weightStep: number
-  /** Where the weight on the "confirm" screen comes from. */
+  /** Where each exercise's starting values come from when logging. */
   prefill: 'default' | 'last'
   keepAwake: boolean
   updatedAt: number
@@ -50,6 +85,7 @@ export interface Profile {
 export interface Data {
   types: SessionType[]
   workouts: Workout[]
+  exercises: Exercise[]
   profile: Profile
 }
 
@@ -62,11 +98,51 @@ export const DEFAULT_PROFILE: Profile = {
   updatedAt: 0,
 }
 
-/** Sorts and fills defaults so every backend hands the UI the same shape. */
+// Stored documents may predate the current shape, so the upgraders below take them loosely typed.
+type Stored = any
+
+export function normalizeType(type: Stored): SessionType {
+  const exercises: PlannedExercise[] = Array.isArray(type.exercises)
+    ? type.exercises.map((p: Stored) => ({
+        exerciseId: p.exerciseId,
+        weightKg: p.weightKg ?? null,
+        reps: p.reps ?? null,
+        seconds: p.seconds ?? null,
+        sets: p.sets ?? null,
+      }))
+    : []
+  return { ...type, exercises }
+}
+
+/** First-version workouts had one weight and a list of sets for the whole session; they become one logged exercise. */
+export function normalizeWorkout(workout: Stored): Workout {
+  if (Array.isArray(workout.exercises)) return workout as Workout
+  const { sets = [], weightKg = 0, ...rest } = workout
+  return { ...rest, exercises: [legacyExercise(rest.typeName, weightKg, sets)] }
+}
+
+export function legacyExercise(name: string, weightKg: number, sets: { reps: number; done: boolean }[]): LoggedExercise {
+  // Old sets could each have their own reps; keep the most common value.
+  const counts = new Map<number, number>()
+  for (const s of sets) counts.set(s.reps, (counts.get(s.reps) ?? 0) + 1)
+  const reps = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+  return {
+    exerciseId: null,
+    name,
+    measure: 'weight',
+    weightKg: weightKg > 0 ? weightKg : null,
+    reps,
+    seconds: null,
+    done: sets.map((s) => s.done),
+  }
+}
+
+/** Sorts, fills defaults and upgrades old documents, so every backend hands the UI the same shape. */
 export function normalizeData(input: Partial<Data>): Data {
-  const types = [...(input.types ?? [])].sort((a, b) => a.order - b.order || a.createdAt - b.createdAt)
-  const workouts = [...(input.workouts ?? [])].sort((a, b) => b.startedAt - a.startedAt)
-  return { types, workouts, profile: { ...DEFAULT_PROFILE, ...input.profile } }
+  const types = (input.types ?? []).map(normalizeType).sort((a, b) => a.order - b.order || a.createdAt - b.createdAt)
+  const workouts = (input.workouts ?? []).map(normalizeWorkout).sort((a, b) => b.startedAt - a.startedAt)
+  const exercises = [...(input.exercises ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  return { types, workouts, exercises, profile: { ...DEFAULT_PROFILE, ...input.profile } }
 }
 
 export function newId(): string {

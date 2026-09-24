@@ -1,43 +1,53 @@
+import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { Aura } from '../components/Aura'
+import { ExerciseCard } from '../components/ExerciseCard'
+import { ExercisePicker } from '../components/ExercisePicker'
 import { useConfirm } from '../components/Feedback'
 import { Icon } from '../components/Icon'
 import { SessionIcon } from '../components/SessionIcon'
-import { MiniStepper, Stepper } from '../components/Stepper'
-import { setDraft, useDraft, type Draft } from '../data/draft'
+import { setDraft, updateDraft, useDraft, type Draft } from '../data/draft'
 import { saveWorkout, useData } from '../data/store'
 import { formatDuration } from '../lib/dates'
-import { tap, useNow, useWakeLock } from '../lib/hooks'
-import { newId, type SetEntry } from '../lib/types'
-import { fromUnit, toUnit } from '../lib/units'
+import { useNow, useWakeLock } from '../lib/hooks'
+import { newId, type Exercise, type LoggedExercise } from '../lib/types'
+import { exerciseName, lastLogged, setCount, startExercise } from '../lib/workouts'
 
-/** Step 3 of logging: check off sets as you go, jot a note, finish. */
+/** Step 3 of logging: each exercise with a tap per set, adjustable as you go; a note; finish. */
 export function LogActive() {
   const draft = useDraft()
-  const { profile } = useData()!
+  const data = useData()!
   const navigate = useNavigate()
   const confirm = useConfirm()
   const now = useNow(1000)
-  useWakeLock(profile.keepAwake && draft !== null)
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const [picking, setPicking] = useState(false)
+  useWakeLock(data.profile.keepAwake && draft !== null)
 
   if (!draft) return <Navigate to="/" replace />
 
-  const { unit } = profile
-  const update = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch })
-  const updateSet = (index: number, patch: Partial<SetEntry>) =>
-    update({ sets: draft.sets.map((s, i) => (i === index ? { ...s, ...patch } : s)) })
+  const { unit, weightStep } = data.profile
+  const { done, total } = setCount(draft.exercises)
+  const allDone = total > 0 && done === total
+  const update = (patch: Partial<Draft>) => updateDraft((d) => ({ ...d, ...patch }))
+  const updateExercise = (index: number, next: LoggedExercise) =>
+    updateDraft((d) => ({ ...d, exercises: d.exercises.map((ex, i) => (i === index ? next : ex)) }))
 
-  const done = draft.sets.filter((s) => s.done).length
-  const total = draft.sets.length
-  const allDone = done === total
-
-  const toggle = (index: number) => {
-    tap()
-    updateSet(index, { done: !draft.sets[index].done })
+  const removeExercise = (index: number) => {
+    setExpanded(null)
+    updateDraft((d) => ({ ...d, exercises: d.exercises.filter((_, i) => i !== index) }))
   }
 
-  const addSet = () => update({ sets: [...draft.sets, { reps: draft.sets[total - 1]?.reps ?? 10, done: false }] })
-  const removeSet = () => total > 1 && update({ sets: draft.sets.slice(0, -1) })
+  // Added mid-workout: same number of sets as the rest, values from last time if there is one.
+  const addExercise = (exercise: Exercise) => {
+    const type = data.types.find((t) => t.id === draft.typeId)
+    const fromLast = data.profile.prefill === 'last'
+    updateDraft((d) => {
+      const sets = d.exercises[0]?.done.length ?? type?.sets ?? 3
+      const added = startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), fromLast, sets, type?.reps ?? 10)
+      return { ...d, exercises: [...d.exercises, added] }
+    })
+  }
 
   const finish = async () => {
     if (done === 0) {
@@ -58,8 +68,7 @@ export function LogActive() {
       typeIcon: draft.typeIcon,
       startedAt: draft.startedAt,
       finishedAt: stamp,
-      weightKg: draft.weightKg,
-      sets: draft.sets,
+      exercises: draft.exercises,
       note: draft.note.trim(),
       createdAt: stamp,
       updatedAt: stamp,
@@ -82,7 +91,7 @@ export function LogActive() {
 
   return (
     <main className="page page--flow">
-      <Aura tone="sunset" height={320} glow={0.55 + 0.45 * (done / total)} />
+      <Aura tone="sunset" height={320} glow={0.55 + 0.45 * (total ? done / total : 0)} />
       <div className="flow-bar">
         <button className="btn btn--ghost btn--sm" onClick={discard}>
           Discard
@@ -103,44 +112,27 @@ export function LogActive() {
           {allDone ? 'All sets done. Great work!' : `${done} of ${total} sets done`}
         </p>
         <div className="progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
-          <span style={{ width: `${(done / total) * 100}%` }} />
+          <span style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
         </div>
       </header>
 
-      <section className="group group--controls">
-        <Stepper
-          label="Weight"
-          value={Number(toUnit(draft.weightKg, unit).toFixed(2))}
-          onChange={(v) => update({ weightKg: fromUnit(v, unit) })}
-          step={profile.weightStep}
-          unit={unit}
-          zeroLabel="Bodyweight"
-          max={1000}
-        />
-      </section>
-
-      <section className="group sets" aria-label="Sets">
-        {draft.sets.map((set, i) => (
-          <div key={i} className={`set${set.done ? ' is-done' : ''}`}>
-            <button type="button" className="set__toggle" onClick={() => toggle(i)} aria-pressed={set.done}>
-              <span className="check" aria-hidden="true">
-                <Icon name="check" size={18} strokeWidth={2.6} />
-              </span>
-              <span className="set__label">Set {i + 1}</span>
-            </button>
-            <MiniStepper value={set.reps} onChange={(reps) => updateSet(i, { reps })} suffix="reps" />
-          </div>
+      <section className="ex-list" aria-label="Exercises">
+        {draft.exercises.map((ex, i) => (
+          <ExerciseCard
+            key={`${ex.exerciseId ?? 'session'}-${i}`}
+            ex={ex}
+            name={exerciseName(ex, data.exercises)}
+            unit={unit}
+            weightStep={weightStep}
+            expanded={expanded === i}
+            onToggle={() => setExpanded((cur) => (cur === i ? null : i))}
+            onChange={(next) => updateExercise(i, next)}
+            onRemove={draft.exercises.length > 1 ? () => removeExercise(i) : undefined}
+          />
         ))}
-        <div className="set set--actions">
-          <button type="button" className="btn btn--ghost btn--sm" onClick={addSet}>
-            <Icon name="plus" size={16} /> Add set
-          </button>
-          {total > 1 && (
-            <button type="button" className="btn btn--ghost btn--sm" onClick={removeSet}>
-              <Icon name="minus" size={16} /> Remove last
-            </button>
-          )}
-        </div>
+        <button type="button" className="btn btn--secondary btn--block" onClick={() => setPicking(true)}>
+          <Icon name="plus" size={18} /> Add an exercise
+        </button>
       </section>
 
       <label className="field">
@@ -159,6 +151,13 @@ export function LogActive() {
           Finish workout
         </button>
       </div>
+
+      <ExercisePicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        excluded={new Set(draft.exercises.flatMap((ex) => (ex.exerciseId ? [ex.exerciseId] : [])))}
+        onPick={addExercise}
+      />
     </main>
   )
 }

@@ -50,6 +50,8 @@ export function createLocalBackend(): Backend {
     deleteType: (id) => commit({ types: data.types.filter((t) => t.id !== id) }),
     putWorkout: (workout) => commit({ workouts: [...data.workouts.filter((w) => w.id !== workout.id), workout] }),
     deleteWorkout: (id) => commit({ workouts: data.workouts.filter((w) => w.id !== id) }),
+    putExercise: (exercise) => commit({ exercises: [...data.exercises.filter((e) => e.id !== exercise.id), exercise] }),
+    deleteExercise: (id) => commit({ exercises: data.exercises.filter((e) => e.id !== id) }),
     putProfile: (profile) => commit({ profile }),
   }
 }

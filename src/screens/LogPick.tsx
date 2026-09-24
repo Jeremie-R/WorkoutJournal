@@ -6,11 +6,11 @@ import { useDraft } from '../data/draft'
 import { useData } from '../data/store'
 import { relativeDay } from '../lib/dates'
 import { useBack } from '../lib/hooks'
-import { formatWeight } from '../lib/units'
+import { sessionMeta } from '../lib/workouts'
 
 /** Step 1 of logging: what are we training today? */
 export function LogPick() {
-  const { types, workouts, profile } = useData()!
+  const { types, workouts } = useData()!
   const draft = useDraft()
   const back = useBack('/')
 
@@ -49,9 +49,7 @@ export function LogPick() {
                   </span>
                   <span className="row__body">
                     <span className="row__title row__title--serif">{type.name}</span>
-                    <span className="row__meta">
-                      {type.sets} × {type.reps} · {formatWeight(type.weightKg, profile.unit)}
-                    </span>
+                    <span className="row__meta">{sessionMeta(type)}</span>
                     <span className="row__meta row__meta--soft">{last ? `Last time ${relativeDay(last.startedAt).toLowerCase()}` : 'Not logged yet'}</span>
                   </span>
                   <Icon name="chevron" size={20} />

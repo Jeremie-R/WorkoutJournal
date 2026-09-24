@@ -181,6 +181,29 @@ img {
   text-align: center;
 }
 
+.fineprint--left {
+  max-width: none;
+  margin: 10px 4px 0;
+  text-align: left;
+}
+
+.title--sm {
+  font-size: 28px;
+}
+
+.link {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.field__error {
+  margin-top: 6px;
+  color: var(--danger);
+  font-size: 14px;
+}
+
 .page-head {
   padding-top: 12px;
 }

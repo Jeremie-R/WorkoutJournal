@@ -27,8 +27,27 @@ export const WEIGHT_STEPS: Record<Unit, number[]> = {
 
 export const DEFAULT_STEP: Record<Unit, number> = { kg: 2.5, lb: 5 }
 
-/** Rounds a kg value to a tidy number in the user's unit (used for suggested sessions). */
-export function tidyKg(kg: number, unit: Unit): number {
-  const step = DEFAULT_STEP[unit]
-  return fromUnit(Math.round(toUnit(kg, unit) / step) * step, unit)
+/** 45 → "0:45", 600 → "10:00", 3900 → "1:05:00". */
+export function formatSeconds(total: number): string {
+  const s = Math.max(0, Math.round(total))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const ss = String(s % 60).padStart(2, '0')
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
+}
+
+/** Reads "1:30", "1:05:00" or plain seconds ("90"). */
+export function parseSeconds(text: string): number | null {
+  const parts = text.trim().split(':').map((p) => Number(p.replace(',', '.')))
+  if (parts.length === 0 || parts.length > 3 || parts.some((p) => Number.isNaN(p))) return null
+  return Math.round(parts.reduce((total, p) => total * 60 + p, 0))
+}
+
+/** Finer steps for short holds, coarser for long cardio. */
+export function secondsStep(value: number, dir: 1 | -1): number {
+  const v = dir > 0 ? value : value - 1
+  if (v < 60) return 5
+  if (v < 180) return 15
+  if (v < 600) return 30
+  return 60
 }

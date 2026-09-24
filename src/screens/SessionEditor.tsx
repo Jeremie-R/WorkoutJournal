@@ -161,7 +161,7 @@ export function SessionEditor() {
       )}
 
       <section>
-        <h2 className="section-title">Usual sets and reps</h2>
+        <h2 className="section-title">Sets and reps, for every exercise</h2>
         <div className="group group--controls">
           <Stepper label="Sets" value={sets} onChange={setSets} min={1} max={20} integer />
           <Stepper label="Reps per set" value={reps} onChange={setReps} min={1} max={100} integer />
@@ -176,7 +176,6 @@ export function SessionEditor() {
               key={p.exerciseId}
               plan={p}
               exercise={exercise}
-              sessionSets={sets}
               sessionReps={reps}
               unit={profile.unit}
               weightStep={profile.weightStep}
@@ -228,7 +227,6 @@ export function SessionEditor() {
 interface PlanRowProps {
   plan: PlannedExercise
   exercise: Exercise
-  sessionSets: number
   sessionReps: number
   unit: Unit
   weightStep: number
@@ -241,21 +239,16 @@ interface PlanRowProps {
   onRemove: () => void
 }
 
-/** One exercise in the session. Collapsed it shows its defaults; expanded it edits them. */
-function PlanRow({ plan, exercise, sessionSets, sessionReps, unit, weightStep, expanded, onToggle, onChange, onMove, canMoveUp, canMoveDown, onRemove }: PlanRowProps) {
+/** One exercise in the session. Collapsed it shows its value; expanded it edits it. Sets and reps are the session's. */
+function PlanRow({ plan, exercise, sessionReps, unit, weightStep, expanded, onToggle, onChange, onMove, canMoveUp, canMoveDown, onRemove }: PlanRowProps) {
   const { summary, empty } = planSummary(plan, exercise, sessionReps, unit)
-  // Values equal to the session's are stored as "follow the session", so changing the session updates them.
-  const own = (value: number, session: number) => (value === session ? null : value)
 
   return (
     <div className={`plan-row${expanded ? ' is-open' : ''}`}>
       <button type="button" className="row row--link" onClick={onToggle} aria-expanded={expanded}>
         <span className="row__body">
           <span className="row__title">{exercise.name}</span>
-          <span className={`row__meta${empty ? ' row__meta--soft' : ''}`}>
-            {summary}
-            {plan.sets !== null && ` · ${plan.sets} sets`}
-          </span>
+          <span className={`row__meta${empty ? ' row__meta--soft' : ''}`}>{summary}</span>
         </span>
         <span className="plan-row__chevron" aria-hidden="true">
           <Icon name="chevron" size={18} />
@@ -268,19 +261,10 @@ function PlanRow({ plan, exercise, sessionSets, sessionReps, unit, weightStep, e
             weightKg={plan.weightKg}
             reps={plan.reps ?? sessionReps}
             seconds={plan.seconds}
-            onChange={(patch) => onChange({ ...patch, ...(patch.reps !== undefined && { reps: own(patch.reps, sessionReps) }) })}
+            // A rep count equal to the session's is stored as "follow the session".
+            onChange={(patch) => onChange({ ...patch, ...(patch.reps !== undefined && { reps: patch.reps === sessionReps ? null : patch.reps }) })}
             unit={unit}
             weightStep={weightStep}
-            repsHint={exercise.measure === 'weight' ? `Session: ${sessionReps}` : undefined}
-          />
-          <Stepper
-            label="Sets"
-            hint={`Session: ${sessionSets}`}
-            value={plan.sets ?? sessionSets}
-            onChange={(v) => onChange({ sets: own(v, sessionSets) })}
-            min={1}
-            max={20}
-            integer
           />
           <div className="plan-row__actions">
             <button type="button" className="btn btn--ghost btn--sm" onClick={() => onMove(-1)} disabled={!canMoveUp}>
@@ -304,8 +288,5 @@ function planSummary(plan: PlannedExercise, exercise: Exercise, sessionReps: num
     return plan.seconds ? { summary: formatSeconds(plan.seconds), empty: false } : { summary: 'Tap to set a time', empty: true }
   }
   if (exercise.measure === 'reps') return { summary: `${plan.reps ?? sessionReps} reps`, empty: false }
-  const reps = plan.reps !== null ? ` × ${plan.reps}` : ''
-  return plan.weightKg
-    ? { summary: `${formatWeight(plan.weightKg, unit)}${reps}`, empty: false }
-    : { summary: `Tap to set a weight${plan.reps !== null ? ` · ${plan.reps} reps` : ''}`, empty: true }
+  return plan.weightKg ? { summary: formatWeight(plan.weightKg, unit), empty: false } : { summary: 'Tap to set a weight', empty: true }
 }

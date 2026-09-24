@@ -13,19 +13,17 @@ export interface Exercise {
 }
 
 /**
- * An exercise planned inside a session type. Every value is optional: an empty one falls back to
- * the session's sets/reps or to what was logged last time, so setup can stay as light as the user wants.
+ * An exercise planned inside a session type. Sets and reps belong to the session; an exercise only
+ * has its own value, and even that is optional: an empty one is taken from last time.
  */
 export interface PlannedExercise {
   exerciseId: string
   /** Default weight in kg (measure 'weight'). */
   weightKg: number | null
-  /** The count for 'reps' exercises; an override of the session's reps for 'weight' ones. */
+  /** Count per set for 'reps' exercises (e.g. 10 push-ups); empty follows the session's reps. */
   reps: number | null
   /** Seconds per set (measure 'time'). */
   seconds: number | null
-  /** Override of the session's number of sets. */
-  sets: number | null
 }
 
 /** A kind of session the user trains, e.g. "Legs": its usual sets and reps, and the exercises it includes. */
@@ -44,7 +42,10 @@ export interface SessionType {
   weightKg?: number
 }
 
-/** An exercise as done in a workout. All its sets use the same values; `done` has one entry per set. */
+/**
+ * An exercise as done in a workout. All its sets use the same values; `done` has one entry per set.
+ * Sets and reps come from the session, so every exercise has the same number of sets.
+ */
 export interface LoggedExercise {
   /** null when the session has no exercises: the session itself is logged as a single exercise. */
   exerciseId: string | null
@@ -108,7 +109,6 @@ export function normalizeType(type: Stored): SessionType {
         weightKg: p.weightKg ?? null,
         reps: p.reps ?? null,
         seconds: p.seconds ?? null,
-        sets: p.sets ?? null,
       }))
     : []
   return { ...type, exercises }

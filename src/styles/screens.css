@@ -511,6 +511,19 @@
   transition: width 0.4s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
 
+.sets-reps {
+  margin-top: 4px;
+}
+
+.sets-reps__action {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 13px;
+}
+
 .ex-list {
   display: flex;
   flex-direction: column;

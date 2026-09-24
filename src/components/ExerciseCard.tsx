@@ -8,16 +8,16 @@ import { Stepper } from './Stepper'
 interface ValueFieldsProps {
   measure: Measure
   weightKg: number | null
+  /** The count, for exercises measured in reps. */
   reps: number
   seconds: number | null
   onChange: (patch: { weightKg?: number | null; reps?: number; seconds?: number | null }) => void
   unit: Unit
   weightStep: number
-  repsHint?: string
 }
 
-/** The steppers that fit an exercise's measure: weight and reps, a rep count, or a time. */
-export function ValueFields({ measure, weightKg, reps, seconds, onChange, unit, weightStep, repsHint }: ValueFieldsProps) {
+/** The one value an exercise has of its own: a weight, a time, or a rep count. Sets and reps belong to the session. */
+export function ValueFields({ measure, weightKg, reps, seconds, onChange, unit, weightStep }: ValueFieldsProps) {
   if (measure === 'time') {
     return (
       <Stepper
@@ -32,21 +32,19 @@ export function ValueFields({ measure, weightKg, reps, seconds, onChange, unit, 
       />
     )
   }
+  if (measure === 'reps') {
+    return <Stepper label="Reps per set" value={reps} onChange={(v) => onChange({ reps: v })} min={1} max={500} integer />
+  }
   return (
-    <>
-      {measure === 'weight' && (
-        <Stepper
-          label="Weight"
-          value={Number(toUnit(weightKg ?? 0, unit).toFixed(2))}
-          onChange={(v) => onChange({ weightKg: v > 0 ? fromUnit(v, unit) : null })}
-          step={weightStep}
-          unit={unit}
-          max={1000}
-          zeroLabel="Not set"
-        />
-      )}
-      <Stepper label="Reps per set" hint={repsHint} value={reps} onChange={(v) => onChange({ reps: v })} min={1} max={500} integer />
-    </>
+    <Stepper
+      label="Weight"
+      value={Number(toUnit(weightKg ?? 0, unit).toFixed(2))}
+      onChange={(v) => onChange({ weightKg: v > 0 ? fromUnit(v, unit) : null })}
+      step={weightStep}
+      unit={unit}
+      max={1000}
+      zeroLabel="Not set"
+    />
   )
 }
 
@@ -63,19 +61,16 @@ interface ExerciseCardProps {
   onRemove?: () => void
 }
 
-/** One exercise in a workout: its values, and a tap target per set. Tap the header to adjust today's values. */
+/** One exercise in a workout: its value, and a tap target per set. Tap the header to adjust today's value. */
 export function ExerciseCard({ ex, name, unit, weightStep, expanded, onToggle, onChange, onRemove }: ExerciseCardProps) {
-  // Weight is the key number: until it's entered, prompt for it rather than showing just the reps.
-  const value = missingValue(ex) ? '' : formatValue(ex, unit)
+  // Weight is the key number: until it's entered, prompt for it. Reps are the session's, shown once above.
+  const value = missingValue(ex) ? '' : formatValue(ex, unit, false)
   const complete = ex.done.length > 0 && ex.done.every(Boolean)
 
   const toggleSet = (i: number) => {
     tap()
     onChange({ ...ex, done: ex.done.map((d, j) => (j === i ? !d : d)) })
   }
-
-  const resize = (count: number) =>
-    onChange({ ...ex, done: count > ex.done.length ? [...ex.done, ...Array<boolean>(count - ex.done.length).fill(false)] : ex.done.slice(0, count) })
 
   return (
     <article className={`ex-card${complete ? ' is-complete' : ''}${expanded ? ' is-open' : ''}`}>
@@ -106,7 +101,6 @@ export function ExerciseCard({ ex, name, unit, weightStep, expanded, onToggle, o
             unit={unit}
             weightStep={weightStep}
           />
-          <Stepper label="Sets" value={ex.done.length} onChange={resize} min={1} max={20} integer />
           {onRemove && (
             <button type="button" className="btn btn--ghost btn--sm ex-card__remove" onClick={onRemove}>
               <Icon name="trash" size={16} /> Remove from this workout

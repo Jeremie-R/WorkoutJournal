@@ -23,11 +23,30 @@ export function setCount(exercises: LoggedExercise[]) {
   return { done, total }
 }
 
-/** "40 kg × 12", "15 reps", "1:00", or "" when there's nothing to show. */
-export function formatValue(ex: Pick<LoggedExercise, 'measure' | 'weightKg' | 'reps' | 'seconds'>, unit: Unit): string {
+/** "40 kg × 12", "15 reps", "1:00", or "" when there's nothing to show. Without reps: "40 kg". */
+export function formatValue(ex: Pick<LoggedExercise, 'measure' | 'weightKg' | 'reps' | 'seconds'>, unit: Unit, withReps = true): string {
   if (ex.measure === 'time') return ex.seconds ? formatSeconds(ex.seconds) : ''
-  if (ex.measure === 'weight' && ex.weightKg) return ex.reps ? `${formatWeight(ex.weightKg, unit)} × ${ex.reps}` : formatWeight(ex.weightKg, unit)
+  if (ex.measure === 'weight' && ex.weightKg) return withReps && ex.reps ? `${formatWeight(ex.weightKg, unit)} × ${ex.reps}` : formatWeight(ex.weightKg, unit)
   return ex.reps ? `${ex.reps} reps` : ''
+}
+
+/** A workout's sets and reps, which are the same for every exercise in it. */
+export function workoutShape(exercises: LoggedExercise[]): { sets: number; reps: number } {
+  const sets = Math.max(1, ...exercises.map((ex) => ex.done.length))
+  const reps = exercises.find((ex) => ex.measure === 'weight')?.reps ?? exercises.find((ex) => ex.measure === 'reps')?.reps ?? 10
+  return { sets, reps }
+}
+
+/**
+ * Applies new session sets/reps to every exercise. Reps change on weighted exercises and on any
+ * rep-counted one that was following the session; an exercise with its own count (10 push-ups) keeps it.
+ */
+export function reshape(exercises: LoggedExercise[], from: { reps: number }, to: { sets: number; reps: number }): LoggedExercise[] {
+  return exercises.map((ex) => ({
+    ...ex,
+    reps: ex.measure === 'weight' || (ex.measure === 'reps' && ex.reps === from.reps) ? to.reps : ex.reps,
+    done: to.sets > ex.done.length ? [...ex.done, ...Array<boolean>(to.sets - ex.done.length).fill(false)] : ex.done.slice(0, to.sets),
+  }))
 }
 
 /** True when the exercise's key number (its weight or time) hasn't been entered yet. */
@@ -54,9 +73,9 @@ function choose<T>(planned: T | null | undefined, last: T | null | undefined, fr
 }
 
 /**
- * Today's starting values for one exercise. With the "session setup" preference the plan wins and
- * last time only fills gaps; with "last workout" it's the other way round. Reps for weighted
- * exercises follow the session unless the exercise overrides them.
+ * Today's starting values for one exercise. Sets and reps come from the session. With the "session
+ * setup" preference the planned value wins and last time only fills gaps; with "last workout" it's
+ * the other way round.
  */
 export function startExercise(
   ex: Exercise,
@@ -66,20 +85,14 @@ export function startExercise(
   sets: number,
   reps: number,
 ): LoggedExercise {
-  const count =
-    ex.measure === 'time'
-      ? null
-      : ex.measure === 'reps'
-        ? (choose(plan.reps, last?.reps, fromLast) ?? reps)
-        : (plan.reps ?? (fromLast ? last?.reps : null) ?? reps)
   return {
     exerciseId: ex.id,
     name: ex.name,
     measure: ex.measure,
     weightKg: ex.measure === 'weight' ? choose(plan.weightKg, last?.weightKg, fromLast) : null,
-    reps: count,
+    reps: ex.measure === 'time' ? null : ex.measure === 'reps' ? (choose(plan.reps, last?.reps, fromLast) ?? reps) : reps,
     seconds: ex.measure === 'time' ? choose(plan.seconds, last?.seconds, fromLast) : null,
-    done: Array<boolean>(plan.sets ?? sets).fill(false),
+    done: Array<boolean>(sets).fill(false),
   }
 }
 
@@ -119,7 +132,7 @@ export function findByName(name: string, exercises: Exercise[]): Exercise | unde
 }
 
 export function emptyPlan(exerciseId: string): PlannedExercise {
-  return { exerciseId, weightKg: null, reps: null, seconds: null, sets: null }
+  return { exerciseId, weightKg: null, reps: null, seconds: null }
 }
 
 /** "4 × 12 · 3 exercises" */

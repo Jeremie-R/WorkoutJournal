@@ -6,14 +6,15 @@ import { ExercisePicker } from '../components/ExercisePicker'
 import { useConfirm } from '../components/Feedback'
 import { Icon } from '../components/Icon'
 import { SessionIcon } from '../components/SessionIcon'
+import { SetsAndReps } from '../components/SetsAndReps'
 import { setDraft, updateDraft, useDraft, type Draft } from '../data/draft'
 import { saveWorkout, useData } from '../data/store'
 import { formatDuration } from '../lib/dates'
 import { useNow, useWakeLock } from '../lib/hooks'
 import { newId, type Exercise, type LoggedExercise } from '../lib/types'
-import { exerciseName, lastLogged, setCount, startExercise } from '../lib/workouts'
+import { exerciseName, lastLogged, reshape, setCount, startExercise } from '../lib/workouts'
 
-/** Step 3 of logging: each exercise with a tap per set, adjustable as you go; a note; finish. */
+/** Step 3 of logging: the session's sets × reps, each exercise with a tap per set; a note; finish. */
 export function LogActive() {
   const draft = useDraft()
   const data = useData()!
@@ -38,13 +39,11 @@ export function LogActive() {
     updateDraft((d) => ({ ...d, exercises: d.exercises.filter((_, i) => i !== index) }))
   }
 
-  // Added mid-workout: same number of sets as the rest, values from last time if there is one.
+  // Added mid-workout: the session's sets and reps, its value from last time if there is one.
   const addExercise = (exercise: Exercise) => {
-    const type = data.types.find((t) => t.id === draft.typeId)
     const fromLast = data.profile.prefill === 'last'
     updateDraft((d) => {
-      const sets = d.exercises[0]?.done.length ?? type?.sets ?? 3
-      const added = startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), fromLast, sets, type?.reps ?? 10)
+      const added = startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), fromLast, d.sets, d.reps)
       return { ...d, exercises: [...d.exercises, added] }
     })
   }
@@ -115,6 +114,12 @@ export function LogActive() {
           <span style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
         </div>
       </header>
+
+      <SetsAndReps
+        sets={draft.sets}
+        reps={draft.reps}
+        onChange={(next) => updateDraft((d) => ({ ...d, ...next, exercises: reshape(d.exercises, d, next) }))}
+      />
 
       <section className="ex-list" aria-label="Exercises">
         {draft.exercises.map((ex, i) => (

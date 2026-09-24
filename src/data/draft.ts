@@ -1,11 +1,15 @@
 import { useSyncExternalStore } from 'react'
 import { legacyExercise, type LoggedExercise } from '../lib/types'
+import { workoutShape } from '../lib/workouts'
 
 /** The workout currently in progress. Kept on the device so a locked phone or closed tab doesn't lose it. */
 export interface Draft {
   typeId: string
   typeName: string
   typeIcon: string
+  /** The session's sets and reps for this workout, shared by every exercise. */
+  sets: number
+  reps: number
   exercises: LoggedExercise[]
   note: string
   startedAt: number
@@ -19,12 +23,16 @@ let cached: Draft | null = read()
 function read(): Draft | null {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw) as Draft
+    if (raw) {
+      const draft = JSON.parse(raw) as Draft
+      return draft.sets ? draft : { ...draft, ...workoutShape(draft.exercises) }
+    }
     // A workout started before exercises existed: one weight and a list of sets.
     const legacy = localStorage.getItem(LEGACY_KEY)
     if (!legacy) return null
     const { weightKg, sets, ...rest } = JSON.parse(legacy)
-    const draft: Draft = { ...rest, exercises: [legacyExercise(rest.typeName, weightKg, sets)] }
+    const exercises = [legacyExercise(rest.typeName, weightKg, sets)]
+    const draft: Draft = { ...rest, ...workoutShape(exercises), exercises }
     localStorage.setItem(KEY, JSON.stringify(draft))
     localStorage.removeItem(LEGACY_KEY)
     return draft

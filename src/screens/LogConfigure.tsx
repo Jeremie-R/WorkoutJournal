@@ -10,7 +10,7 @@ import { relativeDay } from '../lib/dates'
 import { useBack } from '../lib/hooks'
 import { formatValue, missingValue, planWorkout, setCount } from '../lib/workouts'
 
-/** Step 2 of logging: confirm today's sets and reps, see what each exercise starts at, go. */
+/** Step 2 of logging: confirm today's sets and reps (for every exercise), see what each exercise starts at, go. */
 export function LogConfigure() {
   const { typeId } = useParams()
   const data = useData()!
@@ -32,7 +32,7 @@ export function LogConfigure() {
   const lastSets = last && setCount(last.exercises)
 
   const start = () => {
-    setDraft({ typeId: type.id, typeName: type.name, typeIcon: type.icon, exercises, note: '', startedAt: Date.now() })
+    setDraft({ typeId: type.id, typeName: type.name, typeIcon: type.icon, sets, reps, exercises, note: '', startedAt: Date.now() })
     navigate('/log/active', { replace: true })
   }
 
@@ -72,14 +72,11 @@ export function LogConfigure() {
                 <span className="row__body">
                   <span className="row__title">{ex.name}</span>
                 </span>
-                <span className="row__end row__end--inline">
-                  <span className="row__meta">{ex.done.length} sets</span>
-                  {missingValue(ex) ? (
-                    <span className="row__meta row__meta--soft">{ex.measure === 'time' ? 'Time' : 'Weight'} to add</span>
-                  ) : (
-                    <span className="row__value">{formatValue(ex, unit)}</span>
-                  )}
-                </span>
+                {missingValue(ex) ? (
+                  <span className="row__meta row__meta--soft">{ex.measure === 'time' ? 'Time' : 'Weight'} to add</span>
+                ) : (
+                  <span className="row__value">{formatValue(ex, unit, false)}</span>
+                )}
               </div>
             ))}
           </div>

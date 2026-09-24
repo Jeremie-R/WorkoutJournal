@@ -6,11 +6,12 @@ import { ExercisePicker } from '../components/ExercisePicker'
 import { useConfirm, useToast } from '../components/Feedback'
 import { Icon } from '../components/Icon'
 import { SessionIcon } from '../components/SessionIcon'
+import { SetsAndReps } from '../components/SetsAndReps'
 import { deleteWorkout, saveWorkout, useData } from '../data/store'
 import { formatLongDay, formatMinutes, formatTime, toLocalInput } from '../lib/dates'
 import { useBack } from '../lib/hooks'
 import type { Exercise, LoggedExercise, Workout } from '../lib/types'
-import { exerciseName, formatValue, lastLogged, setCount, startExercise, workoutLook } from '../lib/workouts'
+import { exerciseName, formatValue, lastLogged, reshape, setCount, startExercise, workoutLook, workoutShape } from '../lib/workouts'
 
 export function WorkoutDetail() {
   const { id } = useParams()
@@ -50,6 +51,7 @@ function ViewWorkout({ workout, onEdit }: { workout: Workout; onEdit: (focusNote
   const toast = useToast()
   const { name, icon } = workoutLook(workout, types)
   const { done, total } = setCount(workout.exercises)
+  const shape = workoutShape(workout.exercises)
 
   const remove = async () => {
     const ok = await confirm({
@@ -102,7 +104,9 @@ function ViewWorkout({ workout, onEdit }: { workout: Workout; onEdit: (focusNote
       </div>
 
       <section>
-        <h2 className="section-title">Exercises</h2>
+        <h2 className="section-title">
+          Exercises · {shape.sets} × {shape.reps}
+        </h2>
         <div className="group">
           {workout.exercises.map((ex, i) => (
             <div key={i} className="done-row">
@@ -139,6 +143,7 @@ function EditWorkout({ workout, focusNote, onDone }: { workout: Workout; focusNo
   const toast = useToast()
   const { unit, weightStep } = data.profile
   const [draft, setDraft] = useState(workout)
+  const [shape, setShape] = useState(() => workoutShape(workout.exercises))
   const [expanded, setExpanded] = useState<number | null>(null)
   const [picking, setPicking] = useState(false)
   const noteRef = useRef<HTMLTextAreaElement>(null)
@@ -156,10 +161,15 @@ function EditWorkout({ workout, focusNote, onDone }: { workout: Workout; focusNo
 
   const addExercise = (exercise: Exercise) =>
     setExercises((list) => {
-      const added = startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), false, list[0]?.done.length ?? 3, list[0]?.reps ?? 10)
+      const added = startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), false, shape.sets, shape.reps)
       // Added after the fact: assume those sets were done.
       return [...list, { ...added, done: added.done.map(() => true) }]
     })
+
+  const changeShape = (next: { sets: number; reps: number }) => {
+    setExercises((list) => reshape(list, shape, next))
+    setShape(next)
+  }
 
   const save = () => {
     // Keep the original duration when the start time moves.
@@ -200,6 +210,8 @@ function EditWorkout({ workout, focusNote, onDone }: { workout: Workout; focusNo
           />
         </label>
       </section>
+
+      <SetsAndReps sets={shape.sets} reps={shape.reps} onChange={changeShape} />
 
       <section className="ex-list" aria-label="Exercises">
         {draft.exercises.map((ex, i) => (

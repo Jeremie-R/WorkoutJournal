@@ -88,6 +88,10 @@ It opens full screen, like any other app, and keeps working offline. An Android 
 - 3D icons: [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT)
 - Fonts: [Newsreader](https://fonts.google.com/specimen/Newsreader) and [Inter](https://rsms.me/inter/) (SIL Open Font License)
 
+## License
+
+[MIT](LICENSE): use, change and share the code however you like. The 3D icons (MIT) and fonts (SIL Open Font License) keep their own licenses.
+
 ## For developers
 
 Built with Vite, React and TypeScript, with Firebase for Google sign-in and storage, and deployed on Vercel. Setup, architecture, deployment and the Android plan are in **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.

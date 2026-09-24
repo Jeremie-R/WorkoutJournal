@@ -41,12 +41,12 @@ Weights are always stored in kg and converted for display. Older documents (firs
    VITE_FIREBASE_PROJECT_ID=…
    VITE_FIREBASE_APP_ID=…
    ```
-5. **Authentication → Settings → Authorized domains**: add the production domain.
-6. **Google Cloud Console → APIs & Services → Credentials → Web client (auto created by Google Service)**: add `https://<domain>/__/auth/handler` (and `http://localhost:5173/__/auth/handler` for dev) to the authorized redirect URIs.
+5. **Authentication → Settings → Authorized domains**: add the production domain (and any custom domain).
+6. **Google Cloud Console → Google Auth Platform → Clients → Web client (auto created by Google Service)**: for every domain the app is served from, add `https://<domain>` to the authorized JavaScript origins and `https://<domain>/__/auth/handler` to the authorized redirect URIs (plus `http://localhost:5173` and its handler for dev). A missing redirect URI shows up as `redirect_uri_mismatch` when signing in; the Branding page's authorized domains are a separate list.
 
 Sign-in uses a popup and falls back to a full-page redirect where popups are blocked (installed app, some mobile browsers). To keep that redirect first-party (Chrome and Safari partition third-party storage, and the Android wrapper needs it), Firebase's sign-in handler is served from our own domain: `authDomain` is the current host, `vercel.json` rewrites `/__/auth/*` and `/__/firebase/*` to `<project-id>.firebaseapp.com`, and `vite.config.ts` proxies the same paths in dev.
 
-Current project: `workout-journal-dd95f` (Firestore in `europe-west1`), live at https://workout-journal-three.vercel.app.
+Current project: `workout-journal-dd95f` (Firestore in `europe-west1`), live at https://workout.app.roberrini.com (also https://workout-journal-three.vercel.app).
 
 After someone signs in, workouts they logged before (in device-only mode) are offered for import with a banner on the Journal.
 

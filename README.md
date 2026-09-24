@@ -7,7 +7,7 @@
 A calm, simple workout log for the gym.<br>
 Plan your sessions once, check off your sets as you go, and watch every exercise get stronger.
 
-**[Open Workout Journal →](https://workout-journal-three.vercel.app)**
+**[Open Workout Journal →](https://workout.app.roberrini.com)**
 
 </div>
 

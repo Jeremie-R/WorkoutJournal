@@ -25,7 +25,7 @@ export function ExerciseEditor() {
   if (!exercise) return <Navigate to="/setup?tab=exercises" replace />
 
   const sessions = usedIn(exercise.id, types)
-  const times = workouts.filter((w) => w.exercises.some((ex) => ex.exerciseId === exercise.id && ex.done.some(Boolean))).length
+  const times = workouts.filter((w) => w.done.some(Boolean) && w.exercises.some((ex) => ex.exerciseId === exercise.id)).length
   const duplicate = findByName(name, exercises)
   const nameTaken = duplicate !== undefined && duplicate.id !== exercise.id
 

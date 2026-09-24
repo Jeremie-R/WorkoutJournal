@@ -1,7 +1,6 @@
-import type { Measure, LoggedExercise, Unit } from '../lib/types'
+import type { LoggedExercise, Measure, Unit } from '../lib/types'
 import { formatSeconds, fromUnit, parseSeconds, secondsStep, toUnit } from '../lib/units'
 import { formatValue, missingValue } from '../lib/workouts'
-import { tap } from '../lib/hooks'
 import { Icon } from './Icon'
 import { Stepper } from './Stepper'
 
@@ -48,11 +47,13 @@ export function ValueFields({ measure, weightKg, reps, seconds, onChange, unit, 
   )
 }
 
-const PLACEHOLDER: Record<Measure, string> = { weight: 'Add weight', reps: 'Add reps', time: 'Add time' }
+const PROMPT: Record<Measure, string> = { weight: 'Add weight', reps: 'Add reps', time: 'Add time' }
 
-interface ExerciseCardProps {
+interface ExerciseRowProps {
   ex: LoggedExercise
   name: string
+  /** The workout's reps, used by rep-counted exercises without a count of their own. */
+  workoutReps: number
   unit: Unit
   weightStep: number
   expanded: boolean
@@ -61,53 +62,41 @@ interface ExerciseCardProps {
   onRemove?: () => void
 }
 
-/** One exercise in a workout: its value, and a tap target per set. Tap the header to adjust today's value. */
-export function ExerciseCard({ ex, name, unit, weightStep, expanded, onToggle, onChange, onRemove }: ExerciseCardProps) {
-  // Weight is the key number: until it's entered, prompt for it. Reps are the session's, shown once above.
-  const value = missingValue(ex) ? '' : formatValue(ex, unit, false)
-  const complete = ex.done.length > 0 && ex.done.every(Boolean)
-
-  const toggleSet = (i: number) => {
-    tap()
-    onChange({ ...ex, done: ex.done.map((d, j) => (j === i ? !d : d)) })
-  }
+/** One exercise in a workout and its value; tap it to change today's value. */
+export function ExerciseRow({ ex, name, workoutReps, unit, weightStep, expanded, onToggle, onChange, onRemove }: ExerciseRowProps) {
+  // Weight is the key number: until it's entered, prompt for it.
+  const value = missingValue(ex) ? '' : formatValue(ex, unit, ex.measure === 'reps' ? workoutReps : undefined)
 
   return (
-    <article className={`ex-card${complete ? ' is-complete' : ''}${expanded ? ' is-open' : ''}`}>
-      <button type="button" className="ex-card__head" onClick={onToggle} aria-expanded={expanded}>
-        <span className="ex-card__name">{name}</span>
-        <span className={`ex-card__value${value ? '' : ' is-empty'}`}>{value || PLACEHOLDER[ex.measure]}</span>
-        <span className="ex-card__chevron" aria-hidden="true">
+    <div className={`plan-row${expanded ? ' is-open' : ''}`}>
+      <button type="button" className="row row--link" onClick={onToggle} aria-expanded={expanded}>
+        <span className="row__body">
+          <span className="row__title">{name}</span>
+        </span>
+        {value ? <span className="row__value">{value}</span> : <span className="value-prompt">{PROMPT[ex.measure]}</span>}
+        <span className="plan-row__chevron" aria-hidden="true">
           <Icon name="chevron" size={18} />
         </span>
       </button>
-
-      <div className="ex-card__sets" role="group" aria-label={`${name} sets`}>
-        {ex.done.map((done, i) => (
-          <button key={i} type="button" className={`set-dot${done ? ' is-done' : ''}`} aria-pressed={done} aria-label={`Set ${i + 1}`} onClick={() => toggleSet(i)}>
-            {done ? <Icon name="check" size={18} strokeWidth={2.6} /> : i + 1}
-          </button>
-        ))}
-      </div>
-
       {expanded && (
-        <div className="ex-card__edit">
+        <div className="plan-row__edit">
           <ValueFields
             measure={ex.measure}
             weightKg={ex.weightKg}
-            reps={ex.reps ?? 10}
+            reps={ex.reps ?? workoutReps}
             seconds={ex.seconds}
-            onChange={(patch) => onChange({ ...ex, ...patch })}
+            // A count equal to the workout's reps just follows the workout.
+            onChange={(patch) => onChange({ ...ex, ...patch, ...(patch.reps !== undefined && { reps: patch.reps === workoutReps ? null : patch.reps }) })}
             unit={unit}
             weightStep={weightStep}
           />
           {onRemove && (
-            <button type="button" className="btn btn--ghost btn--sm ex-card__remove" onClick={onRemove}>
+            <button type="button" className="btn btn--ghost btn--sm row-remove" onClick={onRemove}>
               <Icon name="trash" size={16} /> Remove from this workout
             </button>
           )}
         </div>
       )}
-    </article>
+    </div>
   )
 }

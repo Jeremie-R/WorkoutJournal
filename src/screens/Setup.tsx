@@ -125,7 +125,7 @@ function Exercises({ data }: { data: Data }) {
       <div className="group">
         {exercises.map((exercise) => {
           const sessions = usedIn(exercise.id, types)
-          const times = workouts.filter((w) => w.exercises.some((ex) => ex.exerciseId === exercise.id && ex.done.some(Boolean))).length
+          const times = workouts.filter((w) => w.done.some(Boolean) && w.exercises.some((ex) => ex.exerciseId === exercise.id)).length
           return (
             <Link key={exercise.id} to={`/setup/exercise/${exercise.id}`} className="row row--link row--compact">
               <span className="row__body">

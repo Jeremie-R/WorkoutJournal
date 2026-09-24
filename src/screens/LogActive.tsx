@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { Aura } from '../components/Aura'
-import { ExerciseCard } from '../components/ExerciseCard'
 import { ExercisePicker } from '../components/ExercisePicker'
+import { ExerciseRow } from '../components/ExerciseRow'
 import { useConfirm } from '../components/Feedback'
 import { Icon } from '../components/Icon'
 import { SessionIcon } from '../components/SessionIcon'
-import { SetsAndReps } from '../components/SetsAndReps'
-import { setDraft, updateDraft, useDraft, type Draft } from '../data/draft'
+import { SetsCard } from '../components/SetsCard'
+import { setDraft, updateDraft, useDraft } from '../data/draft'
 import { saveWorkout, useData } from '../data/store'
 import { formatDuration } from '../lib/dates'
 import { useNow, useWakeLock } from '../lib/hooks'
 import { newId, type Exercise, type LoggedExercise } from '../lib/types'
-import { exerciseName, lastLogged, reshape, setCount, startExercise } from '../lib/workouts'
+import { exerciseName, lastLogged, resizeSets, setCount, startExercise } from '../lib/workouts'
 
-/** Step 3 of logging: the session's sets × reps, each exercise with a tap per set; a note; finish. */
+/** Step 3 of logging: check off each set (a round through every exercise), adjust exercises as you go, finish. */
 export function LogActive() {
   const draft = useDraft()
   const data = useData()!
@@ -28,9 +28,9 @@ export function LogActive() {
   if (!draft) return <Navigate to="/" replace />
 
   const { unit, weightStep } = data.profile
-  const { done, total } = setCount(draft.exercises)
+  const { done, total } = setCount(draft)
   const allDone = total > 0 && done === total
-  const update = (patch: Partial<Draft>) => updateDraft((d) => ({ ...d, ...patch }))
+
   const updateExercise = (index: number, next: LoggedExercise) =>
     updateDraft((d) => ({ ...d, exercises: d.exercises.map((ex, i) => (i === index ? next : ex)) }))
 
@@ -39,13 +39,10 @@ export function LogActive() {
     updateDraft((d) => ({ ...d, exercises: d.exercises.filter((_, i) => i !== index) }))
   }
 
-  // Added mid-workout: the session's sets and reps, its value from last time if there is one.
+  // Added mid-workout: its value from last time if there is one.
   const addExercise = (exercise: Exercise) => {
-    const fromLast = data.profile.prefill === 'last'
-    updateDraft((d) => {
-      const added = startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), fromLast, d.sets, d.reps)
-      return { ...d, exercises: [...d.exercises, added] }
-    })
+    const added = startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), data.profile.prefill === 'last')
+    updateDraft((d) => ({ ...d, exercises: [...d.exercises, added] }))
   }
 
   const finish = async () => {
@@ -60,18 +57,7 @@ export function LogActive() {
     }
     const stamp = Date.now()
     const id = newId()
-    saveWorkout({
-      id,
-      typeId: draft.typeId,
-      typeName: draft.typeName,
-      typeIcon: draft.typeIcon,
-      startedAt: draft.startedAt,
-      finishedAt: stamp,
-      exercises: draft.exercises,
-      note: draft.note.trim(),
-      createdAt: stamp,
-      updatedAt: stamp,
-    })
+    saveWorkout({ ...draft, id, note: draft.note.trim(), finishedAt: stamp, createdAt: stamp, updatedAt: stamp })
     setDraft(null)
     navigate('/', { replace: true, state: { saved: id } })
   }
@@ -115,29 +101,37 @@ export function LogActive() {
         </div>
       </header>
 
-      <SetsAndReps
-        sets={draft.sets}
+      <SetsCard
+        done={draft.done}
         reps={draft.reps}
-        onChange={(next) => updateDraft((d) => ({ ...d, ...next, exercises: reshape(d.exercises, d, next) }))}
+        onToggle={(i) => updateDraft((d) => ({ ...d, done: d.done.map((x, j) => (j === i ? !x : x)) }))}
+        onChange={({ sets, reps }) => updateDraft((d) => ({ ...d, reps, done: resizeSets(d.done, sets) }))}
       />
 
-      <section className="ex-list" aria-label="Exercises">
-        {draft.exercises.map((ex, i) => (
-          <ExerciseCard
-            key={`${ex.exerciseId ?? 'session'}-${i}`}
-            ex={ex}
-            name={exerciseName(ex, data.exercises)}
-            unit={unit}
-            weightStep={weightStep}
-            expanded={expanded === i}
-            onToggle={() => setExpanded((cur) => (cur === i ? null : i))}
-            onChange={(next) => updateExercise(i, next)}
-            onRemove={draft.exercises.length > 1 ? () => removeExercise(i) : undefined}
-          />
-        ))}
-        <button type="button" className="btn btn--secondary btn--block" onClick={() => setPicking(true)}>
-          <Icon name="plus" size={18} /> Add an exercise
-        </button>
+      <section>
+        <h2 className="section-title">Exercises</h2>
+        <div className="group">
+          {draft.exercises.map((ex, i) => (
+            <ExerciseRow
+              key={`${ex.exerciseId ?? 'session'}-${i}`}
+              ex={ex}
+              name={exerciseName(ex, data.exercises)}
+              workoutReps={draft.reps}
+              unit={unit}
+              weightStep={weightStep}
+              expanded={expanded === i}
+              onToggle={() => setExpanded((cur) => (cur === i ? null : i))}
+              onChange={(next) => updateExercise(i, next)}
+              onRemove={draft.exercises.length > 1 ? () => removeExercise(i) : undefined}
+            />
+          ))}
+          <button type="button" className="row row--link plan-add" onClick={() => setPicking(true)}>
+            <span className="plan-add__icon" aria-hidden="true">
+              <Icon name="plus" size={18} strokeWidth={2.2} />
+            </span>
+            <span className="row__title">Add an exercise</span>
+          </button>
+        </div>
       </section>
 
       <label className="field">
@@ -147,7 +141,7 @@ export function LogActive() {
           rows={3}
           placeholder="How did it feel? Anything to remember next time?"
           value={draft.note}
-          onChange={(e) => update({ note: e.target.value })}
+          onChange={(e) => updateDraft((d) => ({ ...d, note: e.target.value }))}
         />
       </label>
 

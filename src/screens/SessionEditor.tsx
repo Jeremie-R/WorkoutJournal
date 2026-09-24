@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Aura } from '../components/Aura'
-import { ValueFields } from '../components/ExerciseCard'
+import { ValueFields } from '../components/ExerciseRow'
 import { ExercisePicker } from '../components/ExercisePicker'
 import { useConfirm, useToast } from '../components/Feedback'
 import { Icon } from '../components/Icon'

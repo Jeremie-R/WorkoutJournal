@@ -99,7 +99,7 @@ function StreakCard({ summary }: { summary: WeekSummary }) {
 }
 
 function ResumeBanner({ draft }: { draft: Draft }) {
-  const { done, total } = setCount(draft.exercises)
+  const { done, total } = setCount(draft)
   return (
     <Link to="/log/active" className="banner">
       <SessionIcon icon={draft.typeIcon} size={36} />
@@ -211,7 +211,7 @@ function History({ data }: { data: Data }) {
 
 function WorkoutRow({ workout, data }: { workout: Workout; data: Data }) {
   const { name, icon } = workoutLook(workout, data.types)
-  const { done, total } = setCount(workout.exercises)
+  const { done, total } = setCount(workout)
   const named = workout.exercises.filter((ex) => ex.exerciseId)
   return (
     <Link to={`/workout/${workout.id}`} className="row row--link">

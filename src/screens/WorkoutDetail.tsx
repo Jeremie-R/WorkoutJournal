@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { Aura } from '../components/Aura'
-import { ExerciseCard } from '../components/ExerciseCard'
 import { ExercisePicker } from '../components/ExercisePicker'
+import { ExerciseRow } from '../components/ExerciseRow'
 import { useConfirm, useToast } from '../components/Feedback'
 import { Icon } from '../components/Icon'
 import { SessionIcon } from '../components/SessionIcon'
-import { SetsAndReps } from '../components/SetsAndReps'
+import { SetsCard } from '../components/SetsCard'
 import { deleteWorkout, saveWorkout, useData } from '../data/store'
 import { formatLongDay, formatMinutes, formatTime, toLocalInput } from '../lib/dates'
 import { useBack } from '../lib/hooks'
 import type { Exercise, LoggedExercise, Workout } from '../lib/types'
-import { exerciseName, formatValue, lastLogged, reshape, setCount, startExercise, workoutLook, workoutShape } from '../lib/workouts'
+import { exerciseName, formatValue, lastLogged, resizeSets, setCount, startExercise, workoutLook } from '../lib/workouts'
 
 export function WorkoutDetail() {
   const { id } = useParams()
@@ -50,8 +50,7 @@ function ViewWorkout({ workout, onEdit }: { workout: Workout; onEdit: (focusNote
   const confirm = useConfirm()
   const toast = useToast()
   const { name, icon } = workoutLook(workout, types)
-  const { done, total } = setCount(workout.exercises)
-  const shape = workoutShape(workout.exercises)
+  const { done, total } = setCount(workout)
 
   const remove = async () => {
     const ok = await confirm({
@@ -98,27 +97,20 @@ function ViewWorkout({ workout, onEdit }: { workout: Workout; onEdit: (focusNote
           </span>
         </div>
         <div className="tile">
-          <span className="tile__label">Exercises</span>
-          <span className="tile__value">{workout.exercises.length}</span>
+          <span className="tile__label">Reps per set</span>
+          <span className="tile__value">{workout.reps}</span>
         </div>
       </div>
 
       <section>
-        <h2 className="section-title">
-          Exercises · {shape.sets} × {shape.reps}
-        </h2>
+        <h2 className="section-title">Exercises</h2>
         <div className="group">
           {workout.exercises.map((ex, i) => (
-            <div key={i} className="done-row">
-              <div className="done-row__top">
-                <span className="done-row__name">{exerciseName(ex, exercises)}</span>
-                <span className="done-row__value">{formatValue(ex, profile.unit)}</span>
-              </div>
-              <div className="done-row__sets" aria-label={`${ex.done.filter(Boolean).length} of ${ex.done.length} sets done`}>
-                {ex.done.map((d, j) => (
-                  <span key={j} className={`mini-dot${d ? ' is-done' : ''}`} />
-                ))}
-              </div>
+            <div key={i} className="row row--compact">
+              <span className="row__body">
+                <span className="row__title">{exerciseName(ex, exercises)}</span>
+              </span>
+              <span className="row__value">{formatValue(ex, profile.unit, workout.reps) || '—'}</span>
             </div>
           ))}
         </div>
@@ -143,7 +135,6 @@ function EditWorkout({ workout, focusNote, onDone }: { workout: Workout; focusNo
   const toast = useToast()
   const { unit, weightStep } = data.profile
   const [draft, setDraft] = useState(workout)
-  const [shape, setShape] = useState(() => workoutShape(workout.exercises))
   const [expanded, setExpanded] = useState<number | null>(null)
   const [picking, setPicking] = useState(false)
   const noteRef = useRef<HTMLTextAreaElement>(null)
@@ -159,17 +150,7 @@ function EditWorkout({ workout, focusNote, onDone }: { workout: Workout; focusNo
 
   const setExercises = (change: (list: LoggedExercise[]) => LoggedExercise[]) => setDraft((d) => ({ ...d, exercises: change(d.exercises) }))
 
-  const addExercise = (exercise: Exercise) =>
-    setExercises((list) => {
-      const added = startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), false, shape.sets, shape.reps)
-      // Added after the fact: assume those sets were done.
-      return [...list, { ...added, done: added.done.map(() => true) }]
-    })
-
-  const changeShape = (next: { sets: number; reps: number }) => {
-    setExercises((list) => reshape(list, shape, next))
-    setShape(next)
-  }
+  const addExercise = (exercise: Exercise) => setExercises((list) => [...list, startExercise(exercise, {}, lastLogged(exercise.id, data.workouts), false)])
 
   const save = () => {
     // Keep the original duration when the start time moves.
@@ -211,32 +192,44 @@ function EditWorkout({ workout, focusNote, onDone }: { workout: Workout; focusNo
         </label>
       </section>
 
-      <SetsAndReps sets={shape.sets} reps={shape.reps} onChange={changeShape} />
+      <SetsCard
+        done={draft.done}
+        reps={draft.reps}
+        onToggle={(i) => setDraft((d) => ({ ...d, done: d.done.map((x, j) => (j === i ? !x : x)) }))}
+        onChange={({ sets, reps }) => setDraft((d) => ({ ...d, reps, done: resizeSets(d.done, sets) }))}
+      />
 
-      <section className="ex-list" aria-label="Exercises">
-        {draft.exercises.map((ex, i) => (
-          <ExerciseCard
-            key={`${ex.exerciseId ?? 'session'}-${i}`}
-            ex={ex}
-            name={exerciseName(ex, data.exercises)}
-            unit={unit}
-            weightStep={weightStep}
-            expanded={expanded === i}
-            onToggle={() => setExpanded((cur) => (cur === i ? null : i))}
-            onChange={(next) => setExercises((list) => list.map((e, j) => (j === i ? next : e)))}
-            onRemove={
-              draft.exercises.length > 1
-                ? () => {
-                    setExpanded(null)
-                    setExercises((list) => list.filter((_, j) => j !== i))
-                  }
-                : undefined
-            }
-          />
-        ))}
-        <button type="button" className="btn btn--secondary btn--block" onClick={() => setPicking(true)}>
-          <Icon name="plus" size={18} /> Add an exercise
-        </button>
+      <section>
+        <h2 className="section-title">Exercises</h2>
+        <div className="group">
+          {draft.exercises.map((ex, i) => (
+            <ExerciseRow
+              key={`${ex.exerciseId ?? 'session'}-${i}`}
+              ex={ex}
+              name={exerciseName(ex, data.exercises)}
+              workoutReps={draft.reps}
+              unit={unit}
+              weightStep={weightStep}
+              expanded={expanded === i}
+              onToggle={() => setExpanded((cur) => (cur === i ? null : i))}
+              onChange={(next) => setExercises((list) => list.map((e, j) => (j === i ? next : e)))}
+              onRemove={
+                draft.exercises.length > 1
+                  ? () => {
+                      setExpanded(null)
+                      setExercises((list) => list.filter((_, j) => j !== i))
+                    }
+                  : undefined
+              }
+            />
+          ))}
+          <button type="button" className="row row--link plan-add" onClick={() => setPicking(true)}>
+            <span className="plan-add__icon" aria-hidden="true">
+              <Icon name="plus" size={18} strokeWidth={2.2} />
+            </span>
+            <span className="row__title">Add an exercise</span>
+          </button>
+        </div>
       </section>
 
       <label className="field">

@@ -808,6 +808,21 @@
   text-overflow: ellipsis;
 }
 
+.tile--wide {
+  grid-column: 1 / -1;
+}
+
+.tile__value--lg {
+  font-size: 28px;
+  letter-spacing: -0.01em;
+}
+
+.tile__delta {
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .tile__value small {
   color: var(--ink-3);
   font-size: 15px;

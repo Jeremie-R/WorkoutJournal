@@ -1,19 +1,8 @@
 import { useSyncExternalStore } from 'react'
-import { legacyExercise, type LoggedExercise } from '../lib/types'
-import { workoutShape } from '../lib/workouts'
+import { upgradeSets, type Workout } from '../lib/types'
 
 /** The workout currently in progress. Kept on the device so a locked phone or closed tab doesn't lose it. */
-export interface Draft {
-  typeId: string
-  typeName: string
-  typeIcon: string
-  /** The session's sets and reps for this workout, shared by every exercise. */
-  sets: number
-  reps: number
-  exercises: LoggedExercise[]
-  note: string
-  startedAt: number
-}
+export type Draft = Pick<Workout, 'typeId' | 'typeName' | 'typeIcon' | 'reps' | 'done' | 'exercises' | 'note' | 'startedAt'>
 
 const KEY = 'wj:draft:v2'
 const LEGACY_KEY = 'wj:draft:v1'
@@ -22,17 +11,10 @@ let cached: Draft | null = read()
 
 function read(): Draft | null {
   try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) {
-      const draft = JSON.parse(raw) as Draft
-      return draft.sets ? draft : { ...draft, ...workoutShape(draft.exercises) }
-    }
-    // A workout started before exercises existed: one weight and a list of sets.
-    const legacy = localStorage.getItem(LEGACY_KEY)
-    if (!legacy) return null
-    const { weightKg, sets, ...rest } = JSON.parse(legacy)
-    const exercises = [legacyExercise(rest.typeName, weightKg, sets)]
-    const draft: Draft = { ...rest, ...workoutShape(exercises), exercises }
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY)
+    if (!raw) return null
+    // Drafts started with an older version are upgraded like stored workouts.
+    const draft = upgradeSets<Draft>(JSON.parse(raw))
     localStorage.setItem(KEY, JSON.stringify(draft))
     localStorage.removeItem(LEGACY_KEY)
     return draft

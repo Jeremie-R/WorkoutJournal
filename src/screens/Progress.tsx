@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { ColumnChart, LineChart } from '../components/Charts'
+import { LineChart } from '../components/Charts'
 import { SessionIcon } from '../components/SessionIcon'
 import { formatDay, formatShort } from '../lib/dates'
-import type { Data, LoggedExercise, Measure } from '../lib/types'
+import type { Data, LoggedExercise, Measure, Workout } from '../lib/types'
 import { formatNumber, formatSeconds, toUnit } from '../lib/units'
-import { exerciseName, formatValue, trackKey, workoutLook } from '../lib/workouts'
+import { exerciseName, formatValue, repsOf, setCount, trackKey, workoutLook } from '../lib/workouts'
 
 const MAX_POINTS = 20
+const DAY = 86_400_000
 
 interface Occurrence {
   at: number
-  workoutId: string
   sessionName: string
+  workout: Workout
   ex: LoggedExercise
 }
 
@@ -20,7 +21,7 @@ interface Track {
   key: string
   name: string
   measure: Measure
-  /** Oldest first. Only times where at least one set was checked off. */
+  /** Oldest first. Only workouts where at least one set was checked off. */
   occurrences: Occurrence[]
 }
 
@@ -37,9 +38,9 @@ export function Progress({ data }: { data: Data }) {
   const tracks = useMemo(() => {
     const byKey = new Map<string, Track>()
     for (const w of data.workouts) {
+      if (setCount(w).done === 0) continue
       const session = workoutLook(w, data.types)
       for (const ex of w.exercises) {
-        if (!ex.done.some(Boolean)) continue
         const key = trackKey(w, ex)
         let track = byKey.get(key)
         if (!track) {
@@ -52,7 +53,7 @@ export function Progress({ data }: { data: Data }) {
           }
           byKey.set(key, track)
         }
-        track.occurrences.push({ at: w.startedAt, workoutId: w.id, sessionName: session.name, ex })
+        track.occurrences.push({ at: w.startedAt, sessionName: session.name, workout: w, ex })
       }
     }
     // Workouts come newest first: tracks are ordered by most recent, occurrences flipped to oldest first.
@@ -76,25 +77,29 @@ export function Progress({ data }: { data: Data }) {
 
   const metric: Metric =
     track.measure === 'time' ? 'time' : track.measure === 'weight' && track.occurrences.some((o) => o.ex.weightKg) ? 'weight' : 'reps'
-  const valueOf = (ex: LoggedExercise): number | null =>
-    metric === 'weight' ? (ex.weightKg ? Number(toUnit(ex.weightKg, unit).toFixed(2)) : null) : metric === 'time' ? ex.seconds : ex.reps
+  const valueOf = (o: Occurrence): number | null =>
+    metric === 'weight' ? (o.ex.weightKg ? Number(toUnit(o.ex.weightKg, unit).toFixed(2)) : null) : metric === 'time' ? o.ex.seconds : repsOf(o.ex, o.workout.reps)
   const format = metric === 'time' ? formatSeconds : formatNumber
   const metricUnit = metric === 'weight' ? unit : metric === 'reps' ? 'reps' : ''
   const show = (v: number) => `${format(v)}${metricUnit && ` ${metricUnit}`}`
 
   const all = track.occurrences
   const measured = all.flatMap((o) => {
-    const v = valueOf(o.ex)
+    const v = valueOf(o)
     return v === null ? [] : [{ ...o, value: v }]
   })
-  const recent = all.slice(-MAX_POINTS)
   const recentMeasured = measured.slice(-MAX_POINTS)
   const values = measured.map((m) => m.value)
   const change = measured.length ? measured[measured.length - 1].value - measured[0].value : 0
 
-  // Volume per session: reps completed, or total time for timed exercises.
-  const volume = (ex: LoggedExercise) => ex.done.filter(Boolean).length * ((metric === 'time' ? ex.seconds : ex.reps) ?? 0)
-  const scope = (n: number, of: number) => (n < of ? `last ${n} times` : 'each time')
+  // Reps completed (or time, for timed exercises): checked-off sets × reps per set.
+  const timed = metric === 'time'
+  const volume = (o: Occurrence) => setCount(o.workout).done * ((timed ? o.ex.seconds : repsOf(o.ex, o.workout.reps)) ?? 0)
+  const now = Date.now()
+  const within = (from: number, to: number) => all.filter((o) => o.at > now - from * DAY && o.at <= now - to * DAY).reduce((sum, o) => sum + volume(o), 0)
+  const last30 = within(30, 0)
+  const prev30 = within(60, 30)
+  const pct = prev30 > 0 ? Math.round(((last30 - prev30) / prev30) * 100) : null
 
   return (
     <div className="progress">
@@ -107,6 +112,22 @@ export function Progress({ data }: { data: Data }) {
       </div>
 
       <div className="tiles">
+        <div className="tile tile--wide">
+          <span className="tile__label">{timed ? 'Time' : 'Reps'} completed · last 30 days</span>
+          <span className="tile__value tile__value--lg">
+            {timed ? formatSeconds(last30) : formatNumber(last30)}
+            {!timed && <small> reps</small>}
+          </span>
+          <span className="tile__delta">
+            {pct === null
+              ? last30
+                ? 'Nothing in the 30 days before'
+                : 'Nothing in the last 60 days'
+              : pct === 0
+                ? 'Same as the previous 30 days'
+                : `${pct > 0 ? '↑' : '↓'} ${Math.abs(pct)}% vs the previous 30 days`}
+          </span>
+        </div>
         <Tile label="Times done" value={String(all.length)} />
         <Tile label="Latest" value={measured.length ? show(measured[measured.length - 1].value) : '—'} />
         <Tile label="Best" value={values.length ? show(Math.max(...values)) : '—'} />
@@ -121,7 +142,7 @@ export function Progress({ data }: { data: Data }) {
           <h2 className="chart-card__title">{metric === 'weight' ? 'Weight' : metric === 'time' ? 'Time per set' : 'Reps per set'}</h2>
           <p className="chart-card__sub">
             {metricUnit ? `${metricUnit}, ` : ''}
-            {scope(recentMeasured.length, measured.length)}
+            {recentMeasured.length < measured.length ? `last ${recentMeasured.length} times` : 'each time'}
           </p>
           <LineChart
             ariaLabel={`${track.name} ${metric} over time`}
@@ -134,34 +155,26 @@ export function Progress({ data }: { data: Data }) {
         <p className="fineprint">Add a {metric === 'time' ? 'time' : 'weight'} to this exercise during a workout to follow it here.</p>
       )}
 
-      <section className="card chart-card">
-        <h2 className="chart-card__title">{metric === 'time' ? 'Total time' : 'Reps completed'}</h2>
-        <p className="chart-card__sub">Checked-off sets, {scope(recent.length, all.length)}</p>
-        <ColumnChart
-          ariaLabel={`${track.name} ${metric === 'time' ? 'total time' : 'reps completed'} per workout`}
-          unit={metric === 'time' ? '' : 'reps'}
-          format={metric === 'time' ? formatSeconds : formatNumber}
-          points={recent.map((o) => ({ value: volume(o.ex), label: formatShort(o.at) }))}
-        />
-      </section>
-
       <section>
         <h2 className="section-title">Recent</h2>
         <div className="group">
           {[...all]
             .reverse()
             .slice(0, 6)
-            .map((o) => (
-              <Link key={o.workoutId} to={`/workout/${o.workoutId}`} className="row row--link row--compact">
-                <span className="row__body">
-                  <span className="row__title">{formatDay(o.at)}</span>
-                  <span className="row__meta">
-                    {o.sessionName} · {o.ex.done.filter(Boolean).length}/{o.ex.done.length} sets
+            .map((o) => {
+              const { done, total } = setCount(o.workout)
+              return (
+                <Link key={o.workout.id} to={`/workout/${o.workout.id}`} className="row row--link row--compact">
+                  <span className="row__body">
+                    <span className="row__title">{formatDay(o.at)}</span>
+                    <span className="row__meta">
+                      {o.sessionName} · {done}/{total} sets
+                    </span>
                   </span>
-                </span>
-                <span className="row__value">{formatValue(o.ex, unit) || '—'}</span>
-              </Link>
-            ))}
+                  <span className="row__value">{formatValue(o.ex, unit, o.workout.reps) || '—'}</span>
+                </Link>
+              )
+            })}
         </div>
       </section>
     </div>

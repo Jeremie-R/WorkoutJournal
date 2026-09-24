@@ -3,9 +3,9 @@
 A small, calm workout log. Mobile first, installable as an app, and ready to become an Android app.
 
 - **Setup**: create the kinds of sessions you train (Legs, Glutes, Upper body…) with an icon, their sets and reps, and the exercises they include (Squat, Lunges, Plank…). Sets and reps are the session's and apply to every exercise; an exercise only has its own value (a weight, a time, or a count like 10 push-ups), and even that is optional. Exercises are shared between sessions. An Exercises tab lists them all; a Profile tab holds units (kg/lb), week start, weight step and other small preferences.
-- **Log**: tap **+**, pick a session, confirm today's sets and reps, start. Each exercise shows its value and a checkbox per set; tap an exercise to change today's value. Sets × reps can be changed once for the whole workout, and exercises can be added or removed. Add a note, finish. An unfinished workout survives a locked phone or closed tab.
+- **Log**: tap **+**, pick a session, confirm today's sets and reps, start. A set is one round through every exercise, so you check off each set once for the whole workout. Below, the exercises list their values; tap one to change today's value. Sets × reps can be changed for the whole workout, and exercises can be added or removed. Add a note, finish. An unfinished workout survives a locked phone or closed tab.
 - **Review**: weekly streak, a month calendar with workout days highlighted, and the full history, newest first, with sets done per workout. Tap a workout to see its exercises and notes, edit anything, or delete it.
-- **Progress**: per exercise, across every session that includes it: weight (or reps, or time) and reps completed over time.
+- **Progress**: per exercise, across every session that includes it: a weight chart (or reps, or time), and reps completed over the last 30 days with the change from the 30 days before.
 
 ## Run it
 
@@ -33,9 +33,9 @@ Without Firebase env vars the app runs in **device-only mode**: "Continue withou
 Data model (`src/lib/types.ts`):
 - **Exercise**: a shared library entry ("Squat") with how it's measured: `weight`, `reps` (bodyweight counts) or `time` (holds, cardio).
 - **SessionType**: name, icon, sets and reps (shared by all its exercises), and a list of planned exercises. Each planned value (weight, time, or rep count) is optional; an empty one is taken from last time.
-- **Workout**: the exercises as done, each with its value, the session's reps, and a done flag per set (the same number of sets for every exercise). Names are copied so history survives renames and deletions.
+- **Workout**: the session's reps, a done flag per set (a set being one round through all the exercises), and the exercises with their values. Names are copied so history survives renames and deletions.
 
-Weights are always stored in kg and converted for display. Documents from the first version (one weight per session, a list of sets) are upgraded when read (`normalizeData`), so nothing needs migrating by hand.
+Weights are always stored in kg and converted for display. Older documents (first version: one weight per session and a list of sets; then per-exercise checked sets) are upgraded when read (`upgradeSets` in `normalizeData`), so nothing needs migrating by hand.
 
 ## Turning on Google sign-in (Firebase)
 

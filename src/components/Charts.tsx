@@ -51,7 +51,6 @@ interface ChartProps {
 }
 
 interface ChartFrameProps extends ChartProps {
-  zeroBased: boolean
   children: (geo: Geometry) => ReactNode
 }
 
@@ -59,21 +58,20 @@ interface Geometry {
   width: number
   x: (i: number) => number
   y: (v: number) => number
-  band: number
   active: number | null
   format: (value: number) => string
 }
 
 /**
- * Shared axes, gridlines, hover/tap readout and keyboard support for the two charts.
+ * Axes, gridlines, hover/tap readout and keyboard support around the line chart.
  * The readout snaps to the nearest session, so nobody has to hit a 2px line.
  */
-function ChartFrame({ points, unit, ariaLabel, format = fmt, zeroBased, children }: ChartFrameProps) {
+function ChartFrame({ points, unit, ariaLabel, format = fmt, children }: ChartFrameProps) {
   const [ref, width] = useWidth<HTMLDivElement>()
   const [active, setActive] = useState<number | null>(null)
 
   const values = points.map((p) => p.value)
-  const ticks = niceTicks(zeroBased ? 0 : Math.min(...values), Math.max(...values))
+  const ticks = niceTicks(Math.min(...values), Math.max(...values))
   const lo = ticks[0]
   const hi = ticks[ticks.length - 1]
   const innerW = Math.max(10, width - PAD.left - PAD.right)
@@ -129,7 +127,7 @@ function ChartFrame({ points, unit, ariaLabel, format = fmt, zeroBased, children
           </text>
         )}
         {active !== null && <line className="chart__cross" x1={x(active)} x2={x(active)} y1={PAD.top - 8} y2={HEIGHT - PAD.bottom} />}
-        {children({ width, x, y, band, active, format })}
+        {children({ width, x, y, active, format })}
       </svg>
       {active !== null && (
         <div className="chart__tip" style={{ left: tipLeft }} aria-live="polite">
@@ -146,7 +144,7 @@ function ChartFrame({ points, unit, ariaLabel, format = fmt, zeroBased, children
 export function LineChart(props: ChartProps) {
   const { points } = props
   return (
-    <ChartFrame {...props} zeroBased={false}>
+    <ChartFrame {...props}>
       {({ x, y, active, format }) => {
         const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(i)},${y(p.value)}`).join(' ')
         const bottom = HEIGHT - PAD.bottom
@@ -167,36 +165,6 @@ export function LineChart(props: ChartProps) {
             ))}
             {active === null && (
               <text className="chart__value" x={x(last)} y={y(points[last].value) - 12} textAnchor={points.length > 1 ? 'end' : 'middle'} dx={points.length > 1 ? 6 : 0}>
-                {format(points[last].value)}
-              </text>
-            )}
-          </>
-        )
-      }}
-    </ChartFrame>
-  )
-}
-
-export function ColumnChart(props: ChartProps) {
-  const { points } = props
-  return (
-    <ChartFrame {...props} zeroBased>
-      {({ x, y, band, active, format }) => {
-        const w = Math.min(24, Math.max(4, band - 4))
-        const base = y(0)
-        const last = points.length - 1
-        return (
-          <>
-            {points.map((p, i) => {
-              const top = y(p.value)
-              const h = base - top
-              const r = Math.min(4, w / 2, h)
-              const left = x(i) - w / 2
-              const d = h <= 0 ? '' : `M${left},${base} V${top + r} Q${left},${top} ${left + r},${top} H${left + w - r} Q${left + w},${top} ${left + w},${top + r} V${base} Z`
-              return <path key={i} className={`chart__bar${i === active ? ' is-active' : ''}`} d={d} />
-            })}
-            {active === null && points[last].value > 0 && (
-              <text className="chart__value" x={x(last)} y={y(points[last].value) - 8} textAnchor="middle">
                 {format(points[last].value)}
               </text>
             )}

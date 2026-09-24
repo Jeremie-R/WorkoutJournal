@@ -13,40 +13,29 @@ export function exerciseName(ex: LoggedExercise, exercises: Exercise[]): string 
   return (ex.exerciseId && exercises.find((e) => e.id === ex.exerciseId)?.name) || ex.name
 }
 
-export function setCount(exercises: LoggedExercise[]) {
-  let done = 0
-  let total = 0
-  for (const ex of exercises) {
-    total += ex.done.length
-    done += ex.done.filter(Boolean).length
-  }
-  return { done, total }
+/** Sets checked off out of the workout's sets. A set is one round through every exercise. */
+export function setCount(workout: { done: boolean[] }) {
+  return { done: workout.done.filter(Boolean).length, total: workout.done.length }
 }
 
-/** "40 kg × 12", "15 reps", "1:00", or "" when there's nothing to show. Without reps: "40 kg". */
-export function formatValue(ex: Pick<LoggedExercise, 'measure' | 'weightKg' | 'reps' | 'seconds'>, unit: Unit, withReps = true): string {
+export function resizeSets(done: boolean[], count: number): boolean[] {
+  return count > done.length ? [...done, ...Array<boolean>(count - done.length).fill(false)] : done.slice(0, count)
+}
+
+/** Reps per set for this exercise: its own count if it has one, otherwise the workout's. */
+export function repsOf(ex: LoggedExercise, workoutReps: number): number | null {
+  return ex.measure === 'time' ? null : (ex.reps ?? workoutReps)
+}
+
+/** "40 kg × 12" (with the workout's reps), "40 kg", "15 reps", "1:00", or "" when there's nothing to show. */
+export function formatValue(ex: Pick<LoggedExercise, 'measure' | 'weightKg' | 'reps' | 'seconds'>, unit: Unit, workoutReps?: number): string {
   if (ex.measure === 'time') return ex.seconds ? formatSeconds(ex.seconds) : ''
-  if (ex.measure === 'weight' && ex.weightKg) return withReps && ex.reps ? `${formatWeight(ex.weightKg, unit)} × ${ex.reps}` : formatWeight(ex.weightKg, unit)
-  return ex.reps ? `${ex.reps} reps` : ''
-}
-
-/** A workout's sets and reps, which are the same for every exercise in it. */
-export function workoutShape(exercises: LoggedExercise[]): { sets: number; reps: number } {
-  const sets = Math.max(1, ...exercises.map((ex) => ex.done.length))
-  const reps = exercises.find((ex) => ex.measure === 'weight')?.reps ?? exercises.find((ex) => ex.measure === 'reps')?.reps ?? 10
-  return { sets, reps }
-}
-
-/**
- * Applies new session sets/reps to every exercise. Reps change on weighted exercises and on any
- * rep-counted one that was following the session; an exercise with its own count (10 push-ups) keeps it.
- */
-export function reshape(exercises: LoggedExercise[], from: { reps: number }, to: { sets: number; reps: number }): LoggedExercise[] {
-  return exercises.map((ex) => ({
-    ...ex,
-    reps: ex.measure === 'weight' || (ex.measure === 'reps' && ex.reps === from.reps) ? to.reps : ex.reps,
-    done: to.sets > ex.done.length ? [...ex.done, ...Array<boolean>(to.sets - ex.done.length).fill(false)] : ex.done.slice(0, to.sets),
-  }))
+  if (ex.measure === 'weight') {
+    if (!ex.weightKg) return ''
+    return workoutReps ? `${formatWeight(ex.weightKg, unit)} × ${workoutReps}` : formatWeight(ex.weightKg, unit)
+  }
+  const reps = ex.reps ?? workoutReps
+  return reps ? `${reps} reps` : ''
 }
 
 /** True when the exercise's key number (its weight or time) hasn't been entered yet. */
@@ -73,51 +62,32 @@ function choose<T>(planned: T | null | undefined, last: T | null | undefined, fr
 }
 
 /**
- * Today's starting values for one exercise. Sets and reps come from the session. With the "session
- * setup" preference the planned value wins and last time only fills gaps; with "last workout" it's
- * the other way round.
+ * Today's starting value for one exercise (sets and reps are the workout's). With the "session setup"
+ * preference the planned value wins and last time only fills gaps; with "last workout" it's the other way round.
  */
-export function startExercise(
-  ex: Exercise,
-  plan: Partial<PlannedExercise>,
-  last: LoggedExercise | undefined,
-  fromLast: boolean,
-  sets: number,
-  reps: number,
-): LoggedExercise {
+export function startExercise(ex: Exercise, plan: Partial<PlannedExercise>, last: LoggedExercise | undefined, fromLast: boolean): LoggedExercise {
   return {
     exerciseId: ex.id,
     name: ex.name,
     measure: ex.measure,
     weightKg: ex.measure === 'weight' ? choose(plan.weightKg, last?.weightKg, fromLast) : null,
-    reps: ex.measure === 'time' ? null : ex.measure === 'reps' ? (choose(plan.reps, last?.reps, fromLast) ?? reps) : reps,
+    reps: ex.measure === 'reps' ? choose(plan.reps, last?.reps, fromLast) : null,
     seconds: ex.measure === 'time' ? choose(plan.seconds, last?.seconds, fromLast) : null,
-    done: Array<boolean>(sets).fill(false),
   }
 }
 
-/** Everything a workout of this session starts with, for the chosen sets and reps. */
-export function planWorkout(type: SessionType, data: Data, sets: number, reps: number): LoggedExercise[] {
+/** The exercises a workout of this session starts with. */
+export function planWorkout(type: SessionType, data: Data): LoggedExercise[] {
   const fromLast = data.profile.prefill === 'last'
   if (type.exercises.length === 0) {
     // No exercises set up: the session itself is logged, like in the first version.
     const last = lastLogged(`session:${type.id}`, data.workouts)
     const planned = type.weightKg && type.weightKg > 0 ? type.weightKg : null
-    return [
-      {
-        exerciseId: null,
-        name: type.name,
-        measure: 'weight',
-        weightKg: choose(planned, last?.weightKg, fromLast),
-        reps,
-        seconds: null,
-        done: Array<boolean>(sets).fill(false),
-      },
-    ]
+    return [{ exerciseId: null, name: type.name, measure: 'weight', weightKg: choose(planned, last?.weightKg, fromLast), reps: null, seconds: null }]
   }
   return type.exercises.flatMap((plan) => {
     const ex = data.exercises.find((e) => e.id === plan.exerciseId)
-    return ex ? [startExercise(ex, plan, lastLogged(ex.id, data.workouts), fromLast, sets, reps)] : []
+    return ex ? [startExercise(ex, plan, lastLogged(ex.id, data.workouts), fromLast)] : []
   })
 }
 

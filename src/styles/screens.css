@@ -511,114 +511,61 @@
   transition: width 0.4s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
 
-.sets-reps {
+.sets-card {
   margin-top: 4px;
+  padding: 18px 16px 16px;
 }
 
-.sets-reps__action {
+.sets-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sets-card__title {
+  font: 600 18px/1.25 var(--sans);
+}
+
+.sets-card__hint {
+  margin-top: 2px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.sets-card__change {
   flex: none;
-  height: 30px;
+  height: 32px;
   padding: 0 12px;
   background: #fff;
   box-shadow: inset 0 0 0 1px var(--line);
   font-size: 13px;
 }
 
-.ex-list {
+.sets-card__dots {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 16px;
 }
 
-.ex-card {
-  overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--surface);
-  transition:
-    background 0.25s,
-    box-shadow 0.25s;
-}
-
-.ex-card.is-complete {
-  background:
-    linear-gradient(120deg, rgba(247, 166, 199, 0.22), rgba(198, 177, 246, 0.16)),
-    var(--surface);
-}
-
-.ex-card.is-open {
+.sets-card__edit {
+  margin-top: 16px;
   background: #fff;
-  box-shadow:
-    var(--shadow),
-    inset 0 0 0 1px var(--line);
 }
 
-.ex-card__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 14px 14px 4px 16px;
-  border: 0;
-  background: none;
-  text-align: left;
-}
-
-.ex-card__name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font: 600 17px/1.25 var(--sans);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.ex-card__value {
-  flex: none;
-  font: 600 15px var(--sans);
-  font-variant-numeric: tabular-nums;
-}
-
-.ex-card__value.is-empty {
-  padding: 4px 10px;
-  border-radius: 999px;
-  color: var(--ink-2);
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: inset 0 0 0 1px var(--line-strong);
-}
-
-.ex-card__chevron,
-.plan-row__chevron {
-  display: grid;
-  flex: none;
-  color: var(--ink-3);
-  transition: transform 0.2s;
-}
-
-.ex-card.is-open .ex-card__chevron,
-.plan-row.is-open .plan-row__chevron {
-  transform: rotate(90deg);
-}
-
-.ex-card__sets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 16px 16px;
-}
-
+/* 52px so five sets fit on one line on a 375px-wide phone. */
 .set-dot {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border: 0;
   border-radius: 50%;
   background: #fff;
   color: var(--ink-2);
   box-shadow: inset 0 0 0 2px var(--line-strong);
-  font: 600 15px var(--sans);
+  font: 600 17px var(--sans);
   font-variant-numeric: tabular-nums;
   transition:
     background 0.2s,
@@ -633,61 +580,40 @@
   animation: pop 0.32s cubic-bezier(0.3, 0.7, 0.2, 1.2);
 }
 
-.ex-card__edit,
+.plan-row__chevron {
+  display: grid;
+  flex: none;
+  color: var(--ink-3);
+  transition: transform 0.2s;
+}
+
+.plan-row.is-open .plan-row__chevron {
+  transform: rotate(90deg);
+}
+
 .plan-row__edit {
   border-top: 1px solid var(--line);
   background: #fff;
 }
 
-.ex-card__edit > * + *,
 .plan-row__edit > * + * {
   border-top: 1px solid var(--line);
 }
 
-.ex-card__remove {
+.value-prompt {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.row-remove {
   width: 100%;
   border-radius: 0;
   color: var(--danger);
-}
-
-.done-row {
-  padding: 14px 16px;
-}
-
-.done-row__top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.done-row__name {
-  font: 600 16px/1.3 var(--sans);
-}
-
-.done-row__value {
-  font: 600 15px var(--sans);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.done-row__sets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.mini-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--line-strong);
-}
-
-.mini-dot.is-done {
-  background: var(--ink);
-  box-shadow: none;
 }
 
 /* ---------- Setup ---------- */

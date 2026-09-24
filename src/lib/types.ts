@@ -42,22 +42,22 @@ export interface SessionType {
   weightKg?: number
 }
 
-/**
- * An exercise as done in a workout. All its sets use the same values; `done` has one entry per set.
- * Sets and reps come from the session, so every exercise has the same number of sets.
- */
+/** An exercise as done in a workout: just its value. Sets are checked off for the workout as a whole. */
 export interface LoggedExercise {
   /** null when the session has no exercises: the session itself is logged as a single exercise. */
   exerciseId: string | null
   name: string
   measure: Measure
   weightKg: number | null
+  /** Its own count per set, for exercises measured in reps; null follows the workout's reps. */
   reps: number | null
   seconds: number | null
-  done: boolean[]
 }
 
-/** One logged workout. Names and icon are copied so history survives renaming or deleting things. */
+/**
+ * One logged workout. A set is one round through all its exercises, so sets and reps belong to the
+ * workout, not to each exercise. Names and icon are copied so history survives renames and deletions.
+ */
 export interface Workout {
   id: string
   typeId: string
@@ -65,6 +65,10 @@ export interface Workout {
   typeIcon: string
   startedAt: number
   finishedAt: number | null
+  /** Reps per set, for every exercise without a count of its own. */
+  reps: number
+  /** One entry per set: was that round completed. */
+  done: boolean[]
   exercises: LoggedExercise[]
   note: string
   createdAt: number
@@ -114,33 +118,40 @@ export function normalizeType(type: Stored): SessionType {
   return { ...type, exercises }
 }
 
-/** First-version workouts had one weight and a list of sets for the whole session; they become one logged exercise. */
-export function normalizeWorkout(workout: Stored): Workout {
-  if (Array.isArray(workout.exercises)) return workout as Workout
+/**
+ * Brings an older workout (or in-progress draft) to the current shape:
+ * - first version: one weight and a list of sets for the whole session, which becomes one exercise;
+ * - exercises with their own checked sets: a round counts as done if any exercise was checked in it.
+ */
+export function upgradeSets<T extends { reps: number; done: boolean[]; exercises: LoggedExercise[] }>(workout: Stored): T {
+  if (Array.isArray(workout.done)) return workout as T
+  if (Array.isArray(workout.exercises)) {
+    const exercises: Stored[] = workout.exercises
+    const rounds = Math.max(0, ...exercises.map((ex) => ex.done?.length ?? 0))
+    const reps = exercises.find((ex) => ex.measure !== 'time' && ex.reps)?.reps ?? 10
+    return {
+      ...workout,
+      reps,
+      done: Array.from({ length: rounds }, (_, i) => exercises.some((ex) => ex.done?.[i])),
+      exercises: exercises.map(({ done: _done, ...ex }) => ({ ...ex, reps: ex.measure === 'reps' && ex.reps !== reps ? ex.reps : null })),
+    }
+  }
   const { sets = [], weightKg = 0, ...rest } = workout
-  return { ...rest, exercises: [legacyExercise(rest.typeName, weightKg, sets)] }
-}
-
-export function legacyExercise(name: string, weightKg: number, sets: { reps: number; done: boolean }[]): LoggedExercise {
-  // Old sets could each have their own reps; keep the most common value.
   const counts = new Map<number, number>()
-  for (const s of sets) counts.set(s.reps, (counts.get(s.reps) ?? 0) + 1)
-  const reps = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+  for (const s of sets as { reps: number }[]) counts.set(s.reps, (counts.get(s.reps) ?? 0) + 1)
   return {
-    exerciseId: null,
-    name,
-    measure: 'weight',
-    weightKg: weightKg > 0 ? weightKg : null,
-    reps,
-    seconds: null,
-    done: sets.map((s) => s.done),
+    ...rest,
+    // Old sets could each have their own reps; keep the most common value.
+    reps: [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 10,
+    done: (sets as { done: boolean }[]).map((s) => s.done),
+    exercises: [{ exerciseId: null, name: rest.typeName, measure: 'weight', weightKg: weightKg > 0 ? weightKg : null, reps: null, seconds: null }],
   }
 }
 
 /** Sorts, fills defaults and upgrades old documents, so every backend hands the UI the same shape. */
 export function normalizeData(input: Partial<Data>): Data {
   const types = (input.types ?? []).map(normalizeType).sort((a, b) => a.order - b.order || a.createdAt - b.createdAt)
-  const workouts = (input.workouts ?? []).map(normalizeWorkout).sort((a, b) => b.startedAt - a.startedAt)
+  const workouts = (input.workouts ?? []).map((w) => upgradeSets<Workout>(w)).sort((a, b) => b.startedAt - a.startedAt)
   const exercises = [...(input.exercises ?? [])].sort((a, b) => a.name.localeCompare(b.name))
   return { types, workouts, exercises, profile: { ...DEFAULT_PROFILE, ...input.profile } }
 }

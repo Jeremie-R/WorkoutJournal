@@ -27,12 +27,13 @@ export function LogConfigure() {
   if (draft) return <Navigate to="/log/active" replace />
   if (!type) return <Navigate to="/log" replace />
 
-  const exercises = planWorkout(type, data, sets, reps)
+  const exercises = planWorkout(type, data)
   const hasExercises = type.exercises.length > 0
-  const lastSets = last && setCount(last.exercises)
+  const lastSets = last && setCount(last)
 
   const start = () => {
-    setDraft({ typeId: type.id, typeName: type.name, typeIcon: type.icon, sets, reps, exercises, note: '', startedAt: Date.now() })
+    const done = Array<boolean>(sets).fill(false)
+    setDraft({ typeId: type.id, typeName: type.name, typeIcon: type.icon, reps, done, exercises, note: '', startedAt: Date.now() })
     navigate('/log/active', { replace: true })
   }
 
@@ -75,7 +76,7 @@ export function LogConfigure() {
                 {missingValue(ex) ? (
                   <span className="row__meta row__meta--soft">{ex.measure === 'time' ? 'Time' : 'Weight'} to add</span>
                 ) : (
-                  <span className="row__value">{formatValue(ex, unit, false)}</span>
+                  <span className="row__value">{formatValue(ex, unit, ex.measure === 'reps' ? reps : undefined)}</span>
                 )}
               </div>
             ))}

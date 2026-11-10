@@ -54,7 +54,7 @@ export function LogConfigure() {
         <h1 className="title">{type.name}</h1>
         <p className="subtitle">
           {last && lastSets
-            ? `Last time ${relativeDay(last.startedAt).toLowerCase()}: ${lastSets.done} of ${lastSets.total} sets`
+            ? `Last time ${relativeDay(last.startedAt).toLowerCase()}: ${lastSets.done} of ${lastSets.total} sets × ${last.reps} reps`
             : 'First time logging this one. Enjoy it!'}
         </p>
       </header>

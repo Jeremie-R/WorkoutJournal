@@ -81,7 +81,9 @@ Workout Journal runs in your browser and installs on your phone's home screen:
 - **Android (Chrome):** open the app, tap ⋮, then **Add to Home screen** or **Install app**.
 - **iPhone (Safari):** tap **Share**, then **Add to Home Screen**.
 
-It opens full screen, like any other app, and keeps working offline. An Android app for the Play Store is planned.
+It opens full screen, like any other app, and keeps working offline.
+
+There's also an **Android app**, coming to Google Play. It's the same Workout Journal, with the same account and data, so you can switch between the app and the website freely.
 
 ## Credits
 
@@ -94,4 +96,4 @@ It opens full screen, like any other app, and keeps working offline. An Android 
 
 ## For developers
 
-Built with Vite, React and TypeScript, with Firebase for Google sign-in and storage, and deployed on Vercel. Setup, architecture, deployment and the Android plan are in **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
+Built with Vite, React and TypeScript, with Firebase for Google sign-in and storage, and deployed on Vercel. Setup, architecture, deployment and the Android app are in **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.

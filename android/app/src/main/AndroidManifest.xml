@@ -16,6 +16,7 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
         android:supportsRtl="true"
         android:theme="@style/Theme.Workout">
 
@@ -57,6 +58,18 @@
                     android:scheme="https"
                     android:host="${webHost}" />
             </intent-filter>
+        </activity>
+
+        <!--
+          Settings → Apps → Workout Journal → Storage → "Manage space" opens the site's data
+          settings in Chrome. The launcher enables this activity, so it has to be declared.
+        -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+                android:value="${webUrl}" />
         </activity>
     </application>
 </manifest>

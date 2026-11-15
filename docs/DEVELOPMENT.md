@@ -54,16 +54,34 @@ After someone signs in, workouts they logged before (in device-only mode) are of
 
 `vercel.json` handles SPA routing and cache headers (hashed assets are immutable, `sw.js` is never cached). In Vercel: **Add New → Project → import the GitHub repo**. The Vite preset is detected; the build runs `bun run build` and publishes `dist/`. Every push to `main` deploys; branches get preview URLs (add those domains to Firebase's authorized domains to sign in on previews).
 
-## Android
+## Android app
 
-The web app is a complete PWA: manifest (`public/manifest.webmanifest`) with `any` and `maskable` icons, standalone display, portrait orientation, theme colors, a "Log a workout" shortcut, and a service worker for offline use.
+`android/` is the Android app: a **Trusted Web Activity**, a small native shell (`com.roberrini.workout`) that opens https://workout.app.roberrini.com full screen in Chrome. The app and the website are the same thing: same UI, same Google sign-in and Firestore data, and every web deploy updates the app. There's no app code, only `AndroidManifest.xml` (built on Google's [android-browser-helper](https://github.com/GoogleChrome/android-browser-helper) `LauncherActivity`), the icon, and a "Log a workout" shortcut.
 
-The recommended wrapper is a **Trusted Web Activity** (Chrome running the deployed site full screen):
-- Google sign-in, offline cache and updates work exactly as on the web: deploy the site and the app updates.
-- Generate it with [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap): `npx @bubblewrap/cli init --manifest https://<domain>/manifest.webmanifest`, then `bubblewrap build`.
-- Prove we own the site: copy `android/assetlinks.template.json` to `public/.well-known/assetlinks.json` with the package name and the SHA-256 of the signing key (Play Console → App integrity), then redeploy.
+Build with the same toolchain as Sundial (Android Studio's bundled JDK, AGP 9.2, Gradle 9.7):
 
-A Capacitor wrapper (bundling the web build inside the app) is possible too. Google blocks its sign-in page inside embedded WebViews, though, so it would need a native sign-in plugin (e.g. `@capacitor-firebase/authentication`). It's only worth it for native features such as a home-screen widget.
+```bash
+cd android
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+./gradlew assembleRelease   # APK to install directly: app/build/outputs/apk/release/
+./gradlew bundleRelease     # AAB for Google Play: app/build/outputs/bundle/release/
+```
+
+**Signing.** Release builds are signed with `android/keystore/workout-release.jks`; its passwords are in `android/keystore.properties` (format in `keystore.properties.example`). Both are gitignored: keep a backup of the two files somewhere safe. With Play App Signing this key is only the upload key and can be reset, but sideloaded installs need the same key to update.
+
+**Linking the app and the site.** Chrome runs the app without a URL bar only if the site vouches for it: `public/.well-known/assetlinks.json` lists the package name and the SHA-256 of each key that signs it, and the app's `asset_statements` (in `app/build.gradle.kts`) points back at the site. Check the link with:
+
+```
+https://digitalassetlinks.googleapis.com/v1/assetlinks:check?source.web.site=https://workout.app.roberrini.com&relation=delegate_permission/common.handle_all_urls&target.android_app.package_name=com.roberrini.workout&target.android_app.certificate.sha256_fingerprint=<SHA-256>
+```
+
+When the app is published on Google Play with Play App Signing, Google re-signs it with its own key: add the **App signing key** SHA-256 from Play Console → Test and release → App integrity to `assetlinks.json` and redeploy the site, or the Play version shows a URL bar.
+
+**Sign-in.** Nothing Android-specific: the app is the website, so Google sign-in uses the same web flow and the same OAuth client. In an installed app the site goes straight to the full-page redirect (`isInstalledApp` in `src/data/firebase.ts`), since a popup would open in a separate tab that can't report back. Google's own pages show a small toolbar (they're outside the app's site), then hand back to the app.
+
+Gotchas:
+- `app/proguard-rules.pro` keeps android-browser-helper's classes: the launcher enables `ManageDataLauncherActivity` by class, which must match the manifest after shrinking. That activity is what Settings → Apps → Workout Journal → Storage → "Manage space" opens.
+- On a fresh emulator Chrome shows its first-run screens before it can host the app. For automated testing, skip them with `adb shell 'echo "_ --disable-fre --no-first-run" > /data/local/tmp/chrome-command-line'` and `adb shell am set-debug-app --persistent com.android.chrome` (undo with `am clear-debug-app`).
 
 ## Screenshots
 

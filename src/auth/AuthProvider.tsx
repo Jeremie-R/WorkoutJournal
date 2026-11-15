@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cloudEnabled } from '../data/config'
+import { setDraft } from '../data/draft'
 import { clearLocalData, createLocalBackend, readLocalData } from '../data/localBackend'
 import { setBackend } from '../data/store'
 
@@ -19,6 +20,8 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>
   continueWithoutAccount: () => void
   signOut: () => Promise<void>
+  /** Permanently deletes the signed-in account and its journal. False if the user backed out. */
+  deleteAccount: () => Promise<boolean>
   /** Moves workouts saved on this device into the signed-in account. */
   importDeviceData: () => Promise<number>
 }
@@ -83,6 +86,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'signedOut' })
   }, [state.status])
 
+  // A workout in progress belongs to the deleted account too. (The event also covers deletions
+  // that finish after a redirect, in watchUser.)
+  useEffect(() => {
+    const onDeleted = () => setDraft(null)
+    window.addEventListener('wj:account-deleted', onDeleted)
+    return () => window.removeEventListener('wj:account-deleted', onDeleted)
+  }, [])
+
+  const deleteAccount = useCallback(async () => {
+    if (!cloud.current) return false
+    const deleted = await cloud.current.deleteAccount()
+    if (deleted) window.dispatchEvent(new CustomEvent('wj:account-deleted'))
+    return deleted
+  }, [])
+
   const importDeviceData = useCallback(async () => {
     if (!cloud.current || !uid) return 0
     const local = readLocalData()
@@ -92,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [uid])
 
   return (
-    <AuthContext.Provider value={{ state, cloudEnabled, signInWithGoogle, continueWithoutAccount, signOut, importDeviceData }}>
+    <AuthContext.Provider value={{ state, cloudEnabled, signInWithGoogle, continueWithoutAccount, signOut, deleteAccount, importDeviceData }}>
       {children}
     </AuthContext.Provider>
   )

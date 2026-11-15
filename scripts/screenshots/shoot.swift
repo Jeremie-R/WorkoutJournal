@@ -14,6 +14,8 @@ struct Config: Decodable {
     var width: Double
     var height: Double
     var quality: Double
+    /// Renders the page larger than its CSS size (e.g. 1.333 makes a 405px-wide layout fill 540pt).
+    var zoom: Double?
     var outDir: String
     var steps: [Step]
 }
@@ -24,15 +26,16 @@ final class Shooter: NSObject, WKNavigationDelegate {
     let window: NSWindow
     var loaded: CheckedContinuation<Void, Never>?
 
-    init(width: Double, height: Double) {
+    init(width: Double, height: Double, zoom: Double) {
         let conf = WKWebViewConfiguration()
         conf.websiteDataStore = .nonPersistent()
         // Freeze animations so every capture is steady.
         let css = "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important} html{scrollbar-width:none} ::-webkit-scrollbar{display:none}"
         let freeze = "document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='\(css)';document.head.appendChild(s)})"
         conf.userContentController.addUserScript(WKUserScript(source: freeze, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        web = WKWebView(frame: NSRect(x: 0, y: 0, width: width, height: height), configuration: conf)
-        window = NSWindow(contentRect: NSRect(x: -6000, y: -6000, width: width, height: height), styleMask: [.borderless], backing: .buffered, defer: false)
+        web = WKWebView(frame: NSRect(x: 0, y: 0, width: width * zoom, height: height * zoom), configuration: conf)
+        web.pageZoom = zoom
+        window = NSWindow(contentRect: NSRect(x: -6000, y: -6000, width: width * zoom, height: height * zoom), styleMask: [.borderless], backing: .buffered, defer: false)
         super.init()
         web.navigationDelegate = self
         window.contentView = web
@@ -80,7 +83,7 @@ let app = NSApplication.shared
 app.setActivationPolicy(.prohibited)
 
 Task { @MainActor in
-    let shooter = Shooter(width: config.width, height: config.height)
+    let shooter = Shooter(width: config.width, height: config.height, zoom: config.zoom ?? 1)
     do {
         for step in config.steps {
             if let url = step.url { await shooter.load(url) }

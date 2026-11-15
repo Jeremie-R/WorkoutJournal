@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { Aura } from '../components/Aura'
@@ -149,6 +150,30 @@ function Exercises({ data }: { data: Data }) {
 function ProfileSettings({ data }: { data: Data }) {
   const { profile } = data
   const set = (patch: Partial<Profile>) => saveProfile({ ...profile, ...patch })
+  const { state, deleteAccount } = useAuth()
+  const confirm = useConfirm()
+  const toast = useToast()
+  const [deleting, setDeleting] = useState(false)
+
+  const removeAccount = async () => {
+    const ok = await confirm({
+      title: 'Delete your account?',
+      message:
+        'This permanently deletes your account and your journal: every workout, session and exercise. Google will ask you to confirm it’s you. Export your data first if you want a copy.',
+      confirmLabel: 'Delete account',
+      danger: true,
+    })
+    if (!ok) return
+    setDeleting(true)
+    try {
+      await deleteAccount()
+    } catch (error) {
+      console.error('Account deletion failed', error)
+      toast("Couldn't delete your account. Check your connection and try again.")
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const exportData = () => {
     const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), ...data }, null, 2)], { type: 'application/json' })
@@ -245,6 +270,11 @@ function ProfileSettings({ data }: { data: Data }) {
             </span>
           </button>
         </div>
+        {state.status === 'signedIn' && (
+          <button className="btn btn--danger-ghost btn--block" onClick={removeAccount} disabled={deleting}>
+            <Icon name="trash" size={18} /> {deleting ? 'Deleting…' : 'Delete account'}
+          </button>
+        )}
       </section>
 
       <p className="fineprint">

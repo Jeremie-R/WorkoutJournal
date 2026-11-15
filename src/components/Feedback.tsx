@@ -36,8 +36,13 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onError = () => showToast("Couldn't save. Check your connection and try again.")
+    const onDeleted = () => showToast('Your account and journal were deleted.')
     window.addEventListener('wj:save-error', onError)
-    return () => window.removeEventListener('wj:save-error', onError)
+    window.addEventListener('wj:account-deleted', onDeleted)
+    return () => {
+      window.removeEventListener('wj:save-error', onError)
+      window.removeEventListener('wj:account-deleted', onDeleted)
+    }
   }, [showToast])
 
   const close = (ok: boolean) => {

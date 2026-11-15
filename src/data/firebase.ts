@@ -3,9 +3,12 @@
 import { initializeApp } from 'firebase/app'
 import {
   GoogleAuthProvider,
+  deleteUser,
   getAuth,
   getRedirectResult,
   onAuthStateChanged,
+  reauthenticateWithPopup,
+  reauthenticateWithRedirect,
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
@@ -15,6 +18,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   initializeFirestore,
   onSnapshot,
   persistentLocalCache,
@@ -49,9 +53,23 @@ const toAccount = (user: User): AccountUser => ({
   photoURL: user.photoURL,
 })
 
+/** Set while the account deletion waits on a redirect to Google to confirm who's deleting it. */
+const PENDING_DELETE = 'wj:delete-account'
+
 export function watchUser(callback: (user: AccountUser | null) => void) {
-  // Surfaces errors from a redirect sign-in that finished while the page was away.
-  getRedirectResult(auth).catch((error) => console.error('Sign-in redirect failed', error))
+  getRedirectResult(auth)
+    .then(async (result) => {
+      const pending = localStorage.getItem(PENDING_DELETE)
+      if (!pending) return
+      localStorage.removeItem(PENDING_DELETE)
+      // Back from confirming the account: finish deleting it. (Cancelled: nothing was deleted.)
+      if (result?.operationType === 'reauthenticate' && result.user.uid === pending) {
+        await deleteEverything(result.user)
+        window.dispatchEvent(new CustomEvent('wj:account-deleted'))
+      }
+    })
+    // Surfaces errors from a redirect sign-in that finished while the page was away.
+    .catch((error) => console.error('Sign-in redirect failed', error))
   return onAuthStateChanged(auth, (user) => callback(user ? toAccount(user) : null))
 }
 
@@ -59,6 +77,10 @@ export function watchUser(callback: (user: AccountUser | null) => void) {
 function isInstalledApp() {
   return window.matchMedia('(display-mode: standalone)').matches || document.referrer.startsWith('android-app://')
 }
+
+const isPopupUnavailable = (code?: string) =>
+  code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment'
+const isPopupCancelled = (code?: string) => code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request'
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider()
@@ -74,16 +96,65 @@ export async function signInWithGoogle() {
   } catch (error) {
     const code = (error as { code?: string }).code
     // Some mobile browsers block popups; redirect instead.
-    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+    if (isPopupUnavailable(code)) {
       await signInWithRedirect(auth, provider)
       return
     }
-    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
+    if (isPopupCancelled(code)) return
     throw error
   }
 }
 
 export const signOut = () => firebaseSignOut(auth)
+
+/** Deletes the journal (every document under users/{uid}), then the account itself. */
+async function deleteEverything(user: User) {
+  const userDoc = doc(db, 'users', user.uid)
+  const refs = [userDoc]
+  for (const name of ['types', 'workouts', 'exercises']) {
+    const snap = await getDocs(collection(userDoc, name))
+    refs.push(...snap.docs.map((d) => d.ref))
+  }
+  for (let i = 0; i < refs.length; i += 450) {
+    const batch = writeBatch(db)
+    for (const ref of refs.slice(i, i + 450)) batch.delete(ref)
+    await batch.commit()
+  }
+  await deleteUser(user)
+}
+
+/**
+ * Permanently deletes the signed-in account and its journal. Google first confirms the account
+ * (it only lets a recent sign-in delete an account). Resolves to false if that was cancelled; in the
+ * installed app the confirmation is a full-page redirect and the deletion finishes in watchUser.
+ */
+export async function deleteAccount(): Promise<boolean> {
+  const user = auth.currentUser
+  if (!user) return false
+  const provider = new GoogleAuthProvider()
+  if (user.email) provider.setCustomParameters({ login_hint: user.email })
+  const redirect = async () => {
+    localStorage.setItem(PENDING_DELETE, user.uid)
+    await reauthenticateWithRedirect(user, provider)
+  }
+  if (isInstalledApp()) {
+    await redirect()
+    return false
+  }
+  try {
+    await reauthenticateWithPopup(user, provider)
+  } catch (error) {
+    const code = (error as { code?: string }).code
+    if (isPopupUnavailable(code)) {
+      await redirect()
+      return false
+    }
+    if (isPopupCancelled(code)) return false
+    throw error
+  }
+  await deleteEverything(user)
+  return true
+}
 
 // Layout: users/{uid} holds the profile; users/{uid}/types, /workouts and /exercises hold the rest.
 export function createCloudBackend(uid: string): Backend {

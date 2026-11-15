@@ -50,6 +50,8 @@ Current project: `workout-journal-dd95f` (Firestore in `europe-west1`), live at 
 
 After someone signs in, workouts they logged before (in device-only mode) are offered for import with a banner on the Journal.
 
+**Deleting an account** (Setup → Profile → Delete account, required by Google Play for apps with sign-in): Firebase only deletes an account after a recent sign-in, so the app first has Google confirm the account (popup, or a full-page redirect in the installed app), then deletes every document under `users/{uid}` and the Firebase user. After a redirect the deletion finishes in `watchUser`. The privacy policy (roberrini.com/workout-journal/privacy#delete-account) describes the same steps.
+
 ## Deploying (Vercel)
 
 `vercel.json` handles SPA routing and cache headers (hashed assets are immutable, `sw.js` is never cached). In Vercel: **Add New → Project → import the GitHub repo**. The Vite preset is detected; the build runs `bun run build` and publishes `dist/`. Every push to `main` deploys; branches get preview URLs (add those domains to Firebase's authorized domains to sign in on previews).
@@ -92,6 +94,8 @@ sh scripts/screenshots/run.sh
 ```
 
 `plan.mjs` holds the demo data and the list of screens; `hero.html` lays out the header image.
+
+`sh scripts/screenshots/play.sh` builds the Google Play graphics from the same demo data into `android/play/`: eight 1080×1920 phone screenshots (a 9:16 viewport; the README ones are too tall for Play's 2:1 limit), the 1024×500 feature graphic (`feature.html`) and the 512px icon.
 
 ## Design
 

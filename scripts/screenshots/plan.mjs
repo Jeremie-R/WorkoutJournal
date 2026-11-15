@@ -1,8 +1,9 @@
 // Builds realistic demo data (9 weeks of training) and the screenshot plan (config.json) for shoot.swift.
-// Usage: node plan.mjs <output dir>
+// Usage: node plan.mjs <output dir> [width height zoom]  (CSS viewport; defaults to a 390×844 phone)
 import { writeFileSync, mkdirSync } from 'node:fs'
 
 const OUT = process.argv[2]
+const [width = 390, height = 844, zoom = 1] = process.argv.slice(3).map(Number)
 const BASE = 'http://localhost:5173'
 const DAY = 86_400_000
 const now = new Date()
@@ -170,5 +171,5 @@ const steps = [
 ]
 
 mkdirSync(OUT, { recursive: true })
-writeFileSync(`${OUT}/config.json`, JSON.stringify({ width: 390, height: 844, quality: 0.86, outDir: OUT, steps }, null, 2))
+writeFileSync(`${OUT}/config.json`, JSON.stringify({ width, height, zoom, quality: 0.86, outDir: OUT, steps }, null, 2))
 console.log(`${workouts.length} workouts, last glutes ${lastGlutes}`)

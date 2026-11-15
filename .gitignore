@@ -14,3 +14,13 @@ dist
 *.keystore
 *.p12
 key.properties
+
+# Android project: local SDK path, build output, release keystore and its passwords.
+android/local.properties
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/keystore/
+android/keystore.properties
+android/dist/

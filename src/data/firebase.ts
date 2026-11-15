@@ -55,14 +55,25 @@ export function watchUser(callback: (user: AccountUser | null) => void) {
   return onAuthStateChanged(auth, (user) => callback(user ? toAccount(user) : null))
 }
 
+/** Running as an installed app: the Android app (a Trusted Web Activity) or a home-screen install. */
+function isInstalledApp() {
+  return window.matchMedia('(display-mode: standalone)').matches || document.referrer.startsWith('android-app://')
+}
+
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({ prompt: 'select_account' })
+  // An installed app opens popups as a separate browser tab that can't report back, so go
+  // straight to the full-page redirect (it stays first-party through our own /__/auth handler).
+  if (isInstalledApp()) {
+    await signInWithRedirect(auth, provider)
+    return
+  }
   try {
     await signInWithPopup(auth, provider)
   } catch (error) {
     const code = (error as { code?: string }).code
-    // Popups are unreliable in installed apps and some mobile browsers; redirect instead.
+    // Some mobile browsers block popups; redirect instead.
     if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
       await signInWithRedirect(auth, provider)
       return

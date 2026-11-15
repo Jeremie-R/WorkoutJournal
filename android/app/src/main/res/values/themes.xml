@@ -1,0 +1,10 @@
+<resources>
+    <!-- Shown for a moment while Chrome opens the web app: plain white like the app itself. -->
+    <style name="Theme.Workout" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

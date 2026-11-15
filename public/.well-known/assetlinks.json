@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.roberrini.workout",
+      "sha256_cert_fingerprints": [
+        "AB:2C:9F:97:DD:3D:A7:C1:EA:7D:E9:2A:8C:A0:4B:97:31:ED:3E:0B:62:64:9E:6F:D6:5C:2F:45:59:98:88:8B"
+      ]
+    }
+  }
+]

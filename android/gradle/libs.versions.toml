@@ -1,0 +1,10 @@
+[versions]
+# Same Android Gradle Plugin as Sundial, matching the Android Studio on this Mac.
+agp = "9.2.1"
+androidbrowserhelper = "2.7.4"
+
+[libraries]
+androidbrowserhelper = { group = "com.google.androidbrowserhelper", name = "androidbrowserhelper", version.ref = "androidbrowserhelper" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Workout Journal</string>
+    <!-- Shorter, so it fits under the home-screen icon (same as the web manifest's short_name). -->
+    <string name="launcher_name">Workouts</string>
+    <string name="shortcut_log_short">Log a workout</string>
+    <string name="shortcut_log_long">Log a workout</string>
+</resources>

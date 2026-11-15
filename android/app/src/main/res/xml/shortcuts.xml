@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press shortcut, like the web manifest's. Keep the host and package in sync with build.gradle.kts. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_log"
+        android:shortcutId="log"
+        android:shortcutLongLabel="@string/shortcut_log_long"
+        android:shortcutShortLabel="@string/shortcut_log_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://workout.app.roberrini.com/log"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="com.roberrini.workout" />
+    </shortcut>
+</shortcuts>

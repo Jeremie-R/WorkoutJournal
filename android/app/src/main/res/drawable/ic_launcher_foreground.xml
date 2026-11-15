@@ -1,0 +1,21 @@
+<!-- The dumbbell from design/app-icon.svg, shrunk to sit inside the adaptive icon's safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="0.78"
+        android:scaleY="0.78">
+        <group
+            android:pivotX="256"
+            android:pivotY="256"
+            android:rotation="-32">
+            <path
+                android:fillColor="#121214"
+                android:pathData="M182,244h148a12,12 0,0 1,12,12v0a12,12 0,0 1,-12,12h-148a12,12 0,0 1,-12,-12v-0a12,12 0,0 1,12,-12zM152,176h8a18,18 0,0 1,18,18v124a18,18 0,0 1,-18,18h-8a18,18 0,0 1,-18,-18v-124a18,18 0,0 1,18,-18zM352,176h8a18,18 0,0 1,18,18v124a18,18 0,0 1,-18,18h-8a18,18 0,0 1,-18,-18v-124a18,18 0,0 1,18,-18zM113,206h4a13,13 0,0 1,13,13v74a13,13 0,0 1,-13,13h-4a13,13 0,0 1,-13,-13v-74a13,13 0,0 1,13,-13zM395,206h4a13,13 0,0 1,13,13v74a13,13 0,0 1,-13,13h-4a13,13 0,0 1,-13,-13v-74a13,13 0,0 1,13,-13z" />
+        </group>
+    </group>
+</vector>

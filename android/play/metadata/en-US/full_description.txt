@@ -1,0 +1,29 @@
+A calm, simple workout log for the gym. Plan your sessions once, check off your sets as you go, and watch every exercise get stronger.
+
+PLAN YOUR SESSIONS ONCE
+Create a session for each kind of workout you do, like Glutes, Legs or Upper body. Give it a 3D icon, its sets and reps, and the exercises it includes. Pick from a list of common exercises or add your own.
+
+Each exercise is measured the way it's done: weight for lifts, reps for bodyweight moves like push-ups, time for a plank or the treadmill. Values are optional: leave one empty and it's filled in from your last workout.
+
+Exercises are shared between sessions, so the squat in Legs and the squat in Glutes keep a single history.
+
+LOG YOUR WORKOUT AT THE GYM
+Tap +, pick today's session, confirm sets × reps, and start. A set is one round through all the exercises: go through them, then tick the set.
+
+• Heavier today? Tap an exercise to change its weight, reps or time for this workout.
+• Change of plan? Add or remove an exercise, or change the number of sets on the fly.
+• Picks up from last time: each exercise starts at its planned value, or at last time's.
+• Made for the gym floor: big tap targets, a timer, an option to keep the screen on, and it keeps working without signal.
+
+LOOK BACK ON YOUR JOURNAL
+Your weekly streak keeps you going: every week with at least one workout counts. The calendar shows each day you trained, and the history lists every workout with its sets and exercises. Tap one to read your notes, fix a detail or delete it.
+
+SEE YOUR PROGRESS
+Pick an exercise to see how its weight has moved over time, your best, how far you've come since you started, and the reps you completed in the last 30 days compared with the 30 before.
+
+SIGN IN, OR DON'T
+Continue with Google to keep your journal backed up and in sync with the website, workout.app.roberrini.com. Or use the app without an account and everything stays on your phone.
+
+Make it yours: kg or lb, the day your week starts, how much + and − change a weight, keeping the screen on during workouts, and a JSON export of all your data.
+
+No ads, no analytics, no subscription.

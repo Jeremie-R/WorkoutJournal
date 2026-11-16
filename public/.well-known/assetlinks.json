@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.roberrini.workout",
       "sha256_cert_fingerprints": [
-        "AB:2C:9F:97:DD:3D:A7:C1:EA:7D:E9:2A:8C:A0:4B:97:31:ED:3E:0B:62:64:9E:6F:D6:5C:2F:45:59:98:88:8B"
+        "AB:2C:9F:97:DD:3D:A7:C1:EA:7D:E9:2A:8C:A0:4B:97:31:ED:3E:0B:62:64:9E:6F:D6:5C:2F:45:59:98:88:8B",
+        "50:19:B1:A9:B4:1A:10:1A:DD:01:1E:51:BC:4D:D1:7A:8F:0B:38:31:5C:4F:3C:99:3F:5C:EA:EF:09:2E:24:EC"
       ]
     }
   }

@@ -77,7 +77,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 https://digitalassetlinks.googleapis.com/v1/assetlinks:check?source.web.site=https://workout.app.roberrini.com&relation=delegate_permission/common.handle_all_urls&target.android_app.package_name=com.roberrini.workout&target.android_app.certificate.sha256_fingerprint=<SHA-256>
 ```
 
-When the app is published on Google Play with Play App Signing, Google re-signs it with its own key: add the **App signing key** SHA-256 from Play Console → Test and release → App integrity to `assetlinks.json` and redeploy the site, or the Play version shows a URL bar.
+Google Play re-signs the app with its own key (Play App Signing), so `assetlinks.json` lists both: the upload key (`AB:2C:…:88:8B`, for the APK you build and sideload) and Play's **App signing key** (`50:19:…:24:EC`, from Play Console → Test and release → App integrity). Without Play's key the Play version shows a URL bar.
 
 **Sign-in.** Nothing Android-specific: the app is the website, so Google sign-in uses the same web flow and the same OAuth client. In an installed app the site goes straight to the full-page redirect (`isInstalledApp` in `src/data/firebase.ts`), since a popup would open in a separate tab that can't report back. Google's own pages show a small toolbar (they're outside the app's site), then hand back to the app.
 
@@ -95,7 +95,7 @@ sh scripts/screenshots/run.sh
 
 `plan.mjs` holds the demo data and the list of screens; `hero.html` lays out the header image.
 
-`sh scripts/screenshots/play.sh` builds the Google Play graphics from the same demo data into `android/play/`: eight 1080×1920 phone screenshots (a 9:16 viewport; the README ones are too tall for Play's 2:1 limit), the 1024×500 feature graphic (`feature.html`) and the 512px icon.
+`sh scripts/screenshots/play.sh` builds the Google Play graphics from the same demo data into the store listing tree, `android/play/metadata/en-US/images/`: eight 1080×1920 phone screenshots (a 9:16 viewport; the README ones are too tall for Play's 2:1 limit), the 1024×500 feature graphic (`feature.html`) and the 512px icon.
 
 ## Design
 
